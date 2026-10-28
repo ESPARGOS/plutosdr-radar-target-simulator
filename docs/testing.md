@@ -23,7 +23,9 @@ their tests have been removed; Git history retains them.
 
 Native tests use the real control code with an injected register/IIO backend.
 They cover mute with missing radio attributes, busy timeouts, malformed payloads,
-failed or ignored writes, rollback and rollback failure. Browser-model tests
+failed or ignored writes, rollback and rollback failure. Startup tests inject
+radio and calibration failures and check that none marks the simulator ready.
+The CGI must return an error while startup is pending or has failed. Browser-model tests
 cover queued edits, stale responses, mute during a write and failed retuning.
 Shared fixtures check the exact scene payload in both Python and JavaScript.
 
@@ -49,8 +51,8 @@ python3 scripts/check_web.py --device http://192.168.4.1
 ```
 
 The runner starts and stops an isolated browser, just like the preview test.
-The live test reads the device's sample rate and handles both calibrated total
-range and uncalibrated range offsets.
+The live test requires 160 MSa/s and the measured 0.325 µs latency profile. It
+checks the total-range axis and the shaded region below the minimum range.
 
 This test changes the targets, radio gains and carrier frequency. Export the current
 scene and record your radio settings first. It leaves targets muted, restores the
@@ -82,7 +84,9 @@ calibration, then records a baseline with the targets muted and a capture with
 them enabled. It saves the IQ samples, timestamps, reference waveform and settings,
 and mutes both devices when it exits.
 Run `--help` for two-tone, broadband, native-TX and ADC diagnostic options.
-Check the device and driver requirements before using the ADC diagnostics.
+The optional native ADC snapshot tool specifically requires the unused reserved
+DMA region from the original Maia-derived test image. It is not needed by the
+radar simulator and cannot run against ordinary unreserved Linux memory.
 
 `scripts/mimo_radar_pluto.py --host ADDRESS --pyespargos PATH` launches the existing
 MIMO demo with a compatible 20 MSa/s waveform and expanded range. It reads the

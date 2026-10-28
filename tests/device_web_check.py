@@ -31,6 +31,8 @@ assert request("radio", b"100000000")[0] == 400
 assert request("radio", b"2380000000garbage")[0] == 400
 initial_radio = request("state")[1]
 assert initial_radio["connected"]
+assert abs(initial_radio["sample_rate_hz"] - 160000000) <= 100, initial_radio
+assert initial_radio.get("hardware_latency_us") == 0.325, initial_radio
 for payload in (
     b"rx nan",
     b"tx inf",

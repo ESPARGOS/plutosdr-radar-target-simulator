@@ -19,7 +19,7 @@ deploy: tools
 
 .PHONY: firmware test-local test-analysis
 firmware: tools
-	python3 scripts/package_firmware.py
+	python3 scripts/package_firmware.py $(FIRMWARE_ARGS)
 
 test-local: prepare
 	bash tests/run.sh
@@ -41,6 +41,7 @@ test-native:
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost -Itests host/radar_control.c tests/fake_device.c tests/test_native_control.c -lm -o build/tests/native-control
 	build/tests/native-control
 	python3 tests/test_native_api.py
+	python3 tests/test_startup.py
 	python3 tests/test_scene_contract.py
 test-ui-model:
 	node --test tests/*.test.js

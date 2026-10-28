@@ -22,7 +22,7 @@ paths active, no errors and no clipping. See
 [the long-check record](validation/160m-pn-600s-summary.json). The startup script
 also checks RX and TX before making the controls available.
 
-The latest UI firmware was written, read back in full and rebooted. The
+The earlier first-device UI firmware was written, read back in full and rebooted. The
 [manifest](validation/firmware-manifest.json), [startup record](validation/startup.txt)
 and [browser regression](validation/browser-check.txt) identify that image.
 Those records describe the flashed image. Later source and documentation edits
@@ -69,3 +69,6 @@ measurements above describe the supported four-target design.
 
 [Software refactor checks](validation/software-refactor.md) cover the native
 controls, browser and volatile testing on a second Pluto.
+
+[Second-Pluto timing calibration](validation/160m-second-pluto.md) explains the
+160 MSa/s startup fix and the device-specific interface checks.

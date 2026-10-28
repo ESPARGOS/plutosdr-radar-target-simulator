@@ -13,7 +13,8 @@ common = [cc, "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-Ihost", "-Ites
 subprocess.run(
     common
     + [
-        "-DRADAR_TEST",
+        f'-DRADAR_READY_FILE="{BUILD / "radar-ready"}"',
+        f'-DRADAR_FAILED_FILE="{BUILD / "radar-failed"}"',
         "host/radar_cgi.c",
         "host/radar_control.c",
         "tests/fake_device.c",
@@ -27,14 +28,19 @@ subprocess.run(
 )
 
 
-def request(path, body=b"", **faults):
+def request(path, body=b"", ready=True, failed=False, **faults):
+    for filename, present in (("radar-ready", ready), ("radar-failed", failed)):
+        file = BUILD / filename
+        file.unlink(missing_ok=True)
+        if present:
+            file.touch()
     env = os.environ.copy()
     env.update(
         REQUEST_METHOD="GET" if path == "state" else "POST",
         PATH_INFO="/" + path,
         CONTENT_LENGTH=str(len(body)),
         HTTP_HOST="pluto.test",
-        **faults
+        **faults,
     )
     result = subprocess.run(
         [str(BUILD / "cgi-test")], input=body, capture_output=True, env=env, check=True
@@ -73,6 +79,13 @@ assert code == 503 and hardware["mode"] == "slow_attack"
 assert request("apply", b"0 " + b"0 0 0 " * 4 + b"trailing")[0] == 400
 assert request("mute", HTTP_ORIGIN="http://other.test")[0] == 403
 assert request("state")[1]["hardware_latency_us"] == 0.325
+
+
+code, response, hardware = request("state", ready=False, failed=True)
+assert code == 503 and "160 MSa/s calibration failed" in response["error"]
+assert hardware is None
+assert request("state", ready=False)[0] == 503
+
 print(
-    "PASS: native CGI failure responses, independent mute, rollback, malformed payloads and origins"
+    "PASS: native CGI failure responses, independent mute, rollback, malformed payloads, origins and startup failure"
 )

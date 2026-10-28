@@ -15,7 +15,7 @@ COMMON = ["host/radar_control.c", "host/radar_linux.c"]
 PROGRAMS = {
     "rtsctl": ["host/rtsctl.c", *COMMON],
     "radar.cgi": ["host/radar_cgi.c", *COMMON],
-    "radio-pn": ["host/radio_pn.c"],
+    "radio-pn": ["host/radio_pn.c", *COMMON],
 }
 
 

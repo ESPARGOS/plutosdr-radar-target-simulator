@@ -56,3 +56,6 @@ The firmware was packaged from the original compatible Maia base. It was not
 flashed to either device during this refactor. Full source/toolchain/input hashes
 are in the generated `build/fpga-manifest.json`, `build/tools-manifest.json` and
 `build/firmware/firmware-manifest.json`. These generated files stay out of Git.
+
+The initial 160 MSa/s fallback described here was subsequently fixed by
+[timing calibration on the second Pluto](160m-second-pluto.md).

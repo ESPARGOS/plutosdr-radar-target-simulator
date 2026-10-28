@@ -2,17 +2,20 @@
 
 ## Compatibility
 
-The firmware has been tested on a **Rev.B Pluto running Maia Linux**. The
-packager retains that image's kernel, root filesystem, USB/network setup and
-three revision-specific device trees. It stops the Maia services that use the FPGA and installs
-the radar bitstream, control programs, startup script and web interface.
+The simulator runs on **Rev.B Pluto** hardware with the required AD9361 driver
+controls. It does not need Maia SDR installed. The packager retains the supplied
+Pluto image's kernel, root filesystem, USB/network setup and device trees, then
+adds the radar FPGA, tools, startup script and web interface.
 
-You need a compatible base image at `build/firmware/original.itb`; the build
-reuses its Linux kernel and root filesystem. A second Rev.B device running a DICHASUS image has also been tested by loading
-the FPGA and UI into RAM; this does not qualify that image as a packaging base.
-Other kernels, factory firmware and other Pluto revisions still need testing. The driver must provide the
-AD9361 IIO/debug attributes used by `radio_fast_setup.sh`, including
-`adi,qec-tracking-slow-mode-enable`, and the retained reserved-memory layout.
+Known radio startup services from DICHASUS and Maia-derived images are removed
+when present, so they cannot compete for the FPGA. Maia device-tree nodes are
+disabled only if they exist. Those compatibility steps are not runtime
+dependencies. The development container's `maia-sdr` name identifies its publisher.
+
+The driver must provide the IIO/debug attributes used by `radio_fast_setup.sh`,
+including `adi,qec-tracking-slow-mode-enable`. The optional ADC snapshot utility
+has a separate reserved-memory requirement; the simulator itself does not.
+Other Pluto revisions and driver versions still need testing.
 
 The expected FIT image order is rev-a DTB, rev-b DTB, rev-c DTB, FPGA, kernel,
 rootfs; check `dumpimage -l` before packaging. Keep the base firmware's source
@@ -43,8 +46,10 @@ the required radio controls.
 ## Build an all-in-one image
 
 ```sh
-make fpga tools
+make fpga
 make firmware
+# To use a different device backup without replacing the default base:
+make firmware FIRMWARE_ARGS="--base build/firmware/second-original.itb --output build/firmware/second-pluto"
 sha256sum build/firmware/pluto.frm
 ```
 
@@ -64,13 +69,14 @@ make tools
 ```
 
 This loads FPGA RAM and configures the radio without changing flash. It stops
-Maia services, temporarily rebinds radio drivers, preserves the USB gadget and
+known radio applications, temporarily rebinds radio drivers, preserves the USB gadget and
 leaves targets muted. Reboot restores the installed image. This command copies
 the FPGA and radio tools; use the firmware image to install the web interface.
-Stop any other application that owns the radio before deployment. In particular,
-DICHASUS may run `maia-reftx` from its startup script; that script does not support
-a `stop` argument. The loader handles Maia services but does not stop arbitrary
-third-party applications for you.
+The loader handles DICHASUS's `maia-reftx` process and Maia's HTTP service when
+present. It moves DICHASUS's init script out of the init directory in RAM because
+that script also starts its transmitter when called with `stop`, blocking reboot.
+Reboot restores the original installed files. Stop any other application that
+owns the radio before deployment.
 
 ## Writing the firmware to flash
 
@@ -89,10 +95,15 @@ ssh root@192.168.4.1 reboot
 ```
 
 Startup initially selects 2380 MHz, 20 MHz bandwidth, RX 0 dB and TX −60 dB.
-It checks the fast profile for ten seconds in each direction; fallback checks
-the normal profile for five seconds per direction. Once those checks finish,
-the web controls become available. If setup fails, read `/tmp/radar-startup.log`
-or run `/tmp/rtsctl status` on the Pluto. Scenes are not restored on reboot.
+It first scans all 256 clock/data delay pairs in each direction with all four
+FPGA target paths active and centers the common FPGA input delays. Candidate
+settings must pass a ten-second PN check;
+marginal candidates are rejected. A separate ten-second check in each direction
+confirms the selected settings. Only a successful 160 MSa/s calibration enables
+the web controls. If it fails, targets remain muted and the API returns an error.
+The radio may restore its normal clocks for recovery, but that does not enable a
+reduced-rate simulator. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
+on the Pluto to diagnose startup failures. Scenes are not restored on reboot.
 
 The web controls have no authentication; use the device USB/private lab network.
 Some base images generate a new SSH host key on each reboot.

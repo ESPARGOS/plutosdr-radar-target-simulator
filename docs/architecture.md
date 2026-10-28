@@ -32,6 +32,15 @@ sample rate and filter bandwidth match the measured configuration. For other
 configurations it shows range offsets, since the hardware delay is unknown.
 All echoes come from the same antenna, so they have the same apparent direction.
 
+Startup uses `radio-pn --tune` to select actual RX/TX clock/data delay pairs,
+without relying on the driver's abbreviated timing scan. The test activates all
+four target paths while checking the interface, then restores the saved scene.
+RX prefers a valid data-only delay before trying clock-delay alternatives. It
+then centers the common FPGA input-delay window, keeping data and frame timing
+coherent. TX selects an interior passing point with those receive settings. Each candidate undergoes sustained PN checking,
+and a failed candidate is excluded before trying another. The checker uses the
+shared control lock so a simultaneous scene request cannot change its test load.
+
 ## HTTP API
 
 At startup, `host/S61radar` copies the web files and CGI program into `/www`,
@@ -88,6 +97,10 @@ The browser uses native JavaScript modules, without a bundler:
 its in-memory state and the SSH adapter used by measurement scripts.
 `host/scene.py` shares the Python conversion rules. Golden payload fixtures
 check that Python and JavaScript agree, including negative and half-step rounding.
+
+Startup publishes readiness only after the 160 MSa/s timing calibration and PN
+checks pass. Until then, the CGI returns HTTP 503. A failed startup leaves targets
+muted and reports the failure; recovery clocks do not enable a slower simulator.
 
 ## Scene files
 

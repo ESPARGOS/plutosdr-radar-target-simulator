@@ -3,13 +3,14 @@
 Run these commands from the repository root. You will need Linux, Python 3.10+,
 GNU Make, Git and Docker, with permission to run Docker as your user.
 For packaging, also install U-Boot tools (`mkimage`, `dumpimage`) and device-tree
-compiler tools (`fdtput`). Arch package names include `docker`, `git`, `make`,
+compiler tools (`fdtget`, `fdtput`). Arch package names include `docker`, `git`, `make`,
 `python`, `uboot-tools` and `dtc`; equivalent Debian packages are `docker.io`,
 `git`, `make`, `python3`, `u-boot-tools` and `device-tree-compiler`.
 
 ## Toolchain
 
-The container is pinned to:
+The build-only container is published by Maia SDR; Maia software is not required
+on the Pluto. The container is pinned to:
 
 ```text
 ghcr.io/maia-sdr/maia-sdr-devel@sha256:a5cb1b566f18db4072cc2148cc46052241d9fd1eeae07ea1984aacd2552f9e85

@@ -1,27 +1,26 @@
 #!/bin/sh
 case "$1" in
  start)
-  rm -f /tmp/radar-loaded
+  rm -f /tmp/radar-loaded /tmp/radar-failed
   cp /usr/bin/rtsctl /tmp/rtsctl || exit 1
-  if ! sh /usr/bin/radar-radio-setup > /tmp/radar-startup.log 2>&1; then
-   echo 'Radar setup failed; see /tmp/radar-startup.log'
-   exit 1
-  fi
-  fast_status=0
-  sh /usr/bin/radar-radio-fast >> /tmp/radar-startup.log 2>&1 || fast_status=$?
-  case "$fast_status" in
-   0) ;;
-   1) echo 'Fast profile check failed; using verified normal profile, targets muted' ;;
-   *) echo 'Radio recovery failed; see /tmp/radar-startup.log'; exit 1 ;;
-  esac
   mkdir -p /www/cgi-bin || exit 1
   cp /usr/share/radar-web/* /www/ || exit 1
   cp /usr/bin/radar.cgi /www/cgi-bin/radar.cgi || exit 1
   chmod 755 /www/cgi-bin/radar.cgi || exit 1
+  if ! sh /usr/bin/radar-radio-setup > /tmp/radar-startup.log 2>&1; then
+   touch /tmp/radar-failed
+   echo 'Radio setup failed; targets muted; see /tmp/radar-startup.log'
+   exit 1
+  fi
+  if ! sh /usr/bin/radar-radio-fast >> /tmp/radar-startup.log 2>&1; then
+   touch /tmp/radar-failed
+   echo '160 MSa/s calibration failed; targets muted; see /tmp/radar-startup.log'
+   exit 1
+  fi
   touch /tmp/radar-loaded
   ;;
  stop)
-  rm -f /tmp/radar-loaded
+  rm -f /tmp/radar-loaded /tmp/radar-failed
   /tmp/rtsctl mute
   ;;
  restart) "$0" stop; "$0" start ;;

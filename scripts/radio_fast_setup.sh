@@ -1,10 +1,12 @@
 #!/bin/sh
 # Run on Pluto after radio_setup.sh has set up 61.44 MSa/s with targets muted.
 # This experimental clock setup bypasses the hardware FIRs, though the driver
-# still reports them enabled. If setup fails, restore and check the normal rate.
+# still reports them enabled. Failure restores a muted recovery state only;
+# callers must not expose a working simulator unless 160 MSa/s passes.
 set -eu
 wanted=${1:-160000000}
-case "$wanted" in restore|128000000|136000000|144000000|150000000|160000000) ;; *) echo 'Unsupported fast rate' >&2; exit 2;; esac
+case "$wanted" in restore|160000000) ;; *) echo 'Only the 160 MSa/s operating profile is supported' >&2; exit 2;; esac
+rm -f /tmp/radar-loaded
 phy=
 for d in /sys/bus/iio/devices/iio:device*; do
  if [ "$(cat "$d/name")" = ad9361-phy ]; then phy=$d; break; fi
@@ -15,12 +17,7 @@ qec_mode=$debug/adi,qec-tracking-slow-mode-enable
 checker=/usr/bin/radio-pn
 [ -x "$checker" ] || checker=/tmp/radio-pn
 version=$(devmem 0x43c00004)
-case "$version" in
- 0x00010006) [ "$wanted" = restore ] || [ "$wanted" -le 144000000 ];;
- 0x00010009|0x0001000B|0x0001000D|0x00010010) [ "$wanted" = restore ] || [ "$wanted" -le 160000000 ];;
- 0x0001000C) [ "$wanted" = restore ] || [ "$wanted" -le 150000000 ];;
- *) echo "Unqualified fast FPGA revision: $version" >&2; exit 2;;
-esac
+[ "$version" = 0x00010010 ] || { echo "Unsupported radar FPGA revision: $version" >&2; exit 2; }
 rx_saved=;tx_saved=;io_saved=;qec_saved=;complete=0
 recovery=/tmp/radar-fast-recovery
 if [ -f "$recovery" ]; then
@@ -85,9 +82,9 @@ finish() {
  result=$?
  trap - 0
  if [ "$complete" -eq 0 ]; then
-  echo "Fast radio setup failed (status $result); restoring normal profile" >&2
+  echo "160 MSa/s setup failed (status $result); restoring muted recovery state" >&2
   if restore_normal; then
-   echo 'Normal 61.44 MSa/s profile restored; targets muted' >&2
+   echo 'Radio restored for recovery; targets muted; simulator unavailable' >&2
    exit 1
   else
    echo 'Normal profile restoration failed; TX remains attenuated' >&2
@@ -139,8 +136,9 @@ tx_actual=$(cat "$phy/out_voltage_sampling_frequency");difference=$((tx_actual-w
 devmem 0x43c00024 32 1
 sleep 1
 [ "$(devmem 0x43c00024)" = 0x00000007 ]
-echo '0 1' > "$debug/digital_tune"
-"$checker" 10
+# Scan actual RX/TX delay pairs rather than extrapolating from the driver's
+# short edge scan. Both ports must then pass the sustained PN checks.
+"$checker" 10 --tune
 /tmp/rtsctl mute
 [ "$(devmem 0x43c00024)" = 0x00000007 ]
 rx_check=$(spi_read 3);tx_check=$(spi_read 2)

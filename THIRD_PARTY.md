@@ -13,7 +13,7 @@ licenses or grant rights in AMD tools or unrelated upstream firmware.
 | ADI HDL | [analogdevicesinc/hdl](https://github.com/analogdevicesinc/hdl), revision `065c8f186ef87ff049d279ed5859ee8d97d91808` | Fetched, not vendored in Git. Per-module notices and upstream LICENSE files govern ADI code; patches retain upstream notices; the ADIBSD text is also in [LICENSES/ADIBSD.txt](LICENSES/ADIBSD.txt) |
 | Maia development container | [maia-sdr/maia-sdr](https://github.com/maia-sdr/maia-sdr) | External build dependency; component licenses remain upstream |
 | Vivado/Vitis 2023.2 | AMD | User-supplied proprietary toolchain; not redistributed |
-| Linux, BusyBox, libraries and device trees in base firmware | User-supplied compatible Pluto/Maia FIT image | Their individual licenses apply; not supplied as source or binary in this repository |
+| Linux, BusyBox, libraries and device trees in base firmware | User-supplied compatible Pluto FIT image | Their individual licenses apply; not supplied as source or binary in this repository |
 | pyespargos | [ESPARGOS/pyespargos](https://github.com/ESPARGOS/pyespargos) | Optional external measurement dependency; its own license applies |
 
 The native tools statically link the toolchain's C runtime. A distributed

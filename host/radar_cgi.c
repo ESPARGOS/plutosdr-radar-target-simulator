@@ -8,6 +8,13 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef RADAR_READY_FILE
+#define RADAR_READY_FILE "/tmp/radar-loaded"
+#endif
+#ifndef RADAR_FAILED_FILE
+#define RADAR_FAILED_FILE "/tmp/radar-failed"
+#endif
+
 typedef enum { STATE, APPLY, MUTE, CARRIER, GAIN } operation;
 typedef struct {
     operation operation;
@@ -187,12 +194,12 @@ int main(void) {
     request input = {0};
     if (parse_request(&input))
         return 0;
-#ifndef RADAR_TEST
-    if (access("/tmp/radar-loaded", F_OK)) {
-        error_response(503, "Radar FPGA is not ready");
+    if (access(RADAR_READY_FILE, F_OK)) {
+        error_response(503, access(RADAR_FAILED_FILE, F_OK)
+                                ? "Radar startup is in progress or the FPGA is not loaded"
+                                : "160 MSa/s calibration failed; targets remain muted");
         return 0;
     }
-#endif
     radar_device device;
     radar_linux backend;
     if (radar_linux_open(&device, &backend)) {

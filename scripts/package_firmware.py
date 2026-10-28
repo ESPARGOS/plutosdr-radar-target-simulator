@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Assemble radar firmware using an existing Pluto image.
-Keep the kernel and root filesystem metadata, replace the FPGA, disable Maia
-services that use it, and add the radar startup script.
+Keep the kernel and root filesystem metadata, replace the FPGA, stop known
+radio applications, and add the radar startup script.
 """
 
+import argparse
 import gzip
 import hashlib
 import json
@@ -16,8 +17,6 @@ import build_tools
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "build/firmware"
-BASE = OUT / "original.itb"
 
 
 def new_record(name, payload, mode=0o100755):
@@ -30,9 +29,8 @@ def new_record(name, payload, mode=0o100755):
     return b
 
 
-def package_inputs():
+def package_inputs(base):
     paths = [
-        "build/firmware/original.itb",
         "host/S61radar",
         "scripts/radio_setup.sh",
         "scripts/radio_fast_setup.sh",
@@ -43,15 +41,27 @@ def package_inputs():
         for path in sorted((ROOT / "web").iterdir())
         if path.is_file()
     )
-    return {path: build_provenance.digest(ROOT / path) for path in paths}
+    return {
+        "base_firmware": build_provenance.digest(base),
+        **{path: build_provenance.digest(ROOT / path) for path in paths},
+    }
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--base", type=Path, default=ROOT / "build/firmware/original.itb"
+    )
+    parser.add_argument("--output", type=Path, default=ROOT / "build/firmware")
+    args = parser.parse_args()
+    base, output = args.base.resolve(), args.output.resolve()
+    if not base.is_file():
+        parser.error("Back up and extract the base FIT first")
+    output.mkdir(parents=True, exist_ok=True)
     fpga = build_provenance.verify()
     native = build_tools.verify()
-    inputs = package_inputs()
-    (OUT / "firmware-manifest.json").unlink(missing_ok=True)
-    assert BASE.exists(), "Back up and extract original.itb first"
+    inputs = package_inputs(base)
+    (output / "firmware-manifest.json").unlink(missing_ok=True)
     for i, name in enumerate(
         [
             "rev-a.dtb",
@@ -70,8 +80,8 @@ def main():
                 "-p",
                 str(i),
                 "-o",
-                str(OUT / name),
-                str(BASE),
+                str(output / name),
+                str(base),
             ],
             check=True,
             stdout=subprocess.DEVNULL,
@@ -82,12 +92,25 @@ def main():
             "/maia-sdr-recording",
             "/maia-sdr-spectrometer",
         ]:
-            subprocess.run(
-                ["fdtput", "-t", "s", str(OUT / name), node, "status", "disabled"],
-                check=True,
+            # These nodes exist only in a Maia-derived base image.
+            exists = subprocess.run(
+                ["fdtget", "-l", str(output / name), node], capture_output=True
             )
+            if exists.returncode == 0:
+                subprocess.run(
+                    [
+                        "fdtput",
+                        "-t",
+                        "s",
+                        str(output / name),
+                        node,
+                        "status",
+                        "disabled",
+                    ],
+                    check=True,
+                )
     # Preserve every original newc record byte-for-byte unless explicitly replaced.
-    data = gzip.decompress((OUT / "original-rootfs.cpio.gz").read_bytes())
+    data = gzip.decompress((output / "original-rootfs.cpio.gz").read_bytes())
     pos = 0
     records = {}
     while pos < len(data):
@@ -106,7 +129,11 @@ def main():
             break
         records[name] = (data[start:pos], payload)
 
-    for name in ["etc/init.d/S50maia-kmod", "etc/init.d/S60maia-httpd"]:
+    for name in [
+        "etc/init.d/S50maia-kmod",
+        "etc/init.d/S60maia-httpd",
+        "etc/init.d/S60dichasus",
+    ]:
         records.pop(name, None)
         records.pop("./" + name, None)
     startup = (ROOT / "host/S61radar").read_bytes()
@@ -138,10 +165,10 @@ def main():
         "TRAILER!!!", b"", 0
     )
     archive += b"\0" * (-len(archive) % 512)
-    (OUT / "rootfs.cpio.gz").write_bytes(gzip.compress(archive, mtime=0))
+    (output / "rootfs.cpio.gz").write_bytes(gzip.compress(archive, mtime=0))
     shutil.copyfile(
         ROOT / "vendor/adi-hdl/projects/pluto/pluto.runs/impl_1/system_top.bit",
-        OUT / "radar.bit",
+        output / "radar.bit",
     )
     # Pluto U-Boot patches the embedded DTB before bootm (adi_loadvals).
     # Match the stock FIT: DTBs must not have hashes invalidated by those patches.
@@ -168,24 +195,26 @@ def main():
         + "\n".join(configs)
         + "\n}; };\n"
     )
-    (OUT / "radar.its").write_text(its)
+    (output / "radar.its").write_text(its)
     subprocess.run(
         ["mkimage", "-f", "radar.its", "radar.itb"],
-        cwd=OUT,
+        cwd=output,
         check=True,
         stdout=subprocess.DEVNULL,
     )
-    fit = (OUT / "radar.itb").read_bytes()
+    fit = (output / "radar.itb").read_bytes()
     frm = fit + hashlib.md5(fit).hexdigest().encode() + b"\n"
     assert len(frm) < 0x1E00000
-    (OUT / "pluto.frm").write_bytes(frm)
-    (OUT / "pluto.frm.sha256").write_text(
+    (output / "pluto.frm").write_bytes(frm)
+    (output / "pluto.frm.sha256").write_text(
         hashlib.sha256(frm).hexdigest() + "  pluto.frm\n"
     )
-    print(f'Built {OUT / "pluto.frm"} ({len(frm)} bytes) from original device firmware')
+    print(
+        f'Built {output / "pluto.frm"} ({len(frm)} bytes) from original device firmware'
+    )
     # A successful package records exactly the inputs and binaries it contains.
     if (
-        inputs != package_inputs()
+        inputs != package_inputs(base)
         or fpga != build_provenance.verify()
         or native != build_tools.verify()
     ):
@@ -197,11 +226,13 @@ def main():
         "fpga": fpga,
         "native": native,
         "artifacts": {
-            name: build_provenance.digest(OUT / name)
+            name: build_provenance.digest(output / name)
             for name in ("pluto.frm", "radar.itb")
         },
     }
-    (OUT / "firmware-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    (output / "firmware-manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n"
+    )
 
 
 if __name__ == "__main__":

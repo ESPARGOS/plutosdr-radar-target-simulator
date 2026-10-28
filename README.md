@@ -31,8 +31,11 @@ is **20 MHz**. At a carrier of 2385 MHz, that gives a nominal passband of roughl
 | Carrier frequency | 325–3800 MHz with the installed AD9363 driver |
 
 **160 MSa/s exceeds the AD9363's specified CMOS interface clock range.** We tested
-this configuration on a Rev.B Pluto running Maia firmware. At startup, the radio
-checks both data directions and falls back to 61.44 MSa/s if either check fails.
+this configuration on Rev.B hardware. Startup sweeps RX and TX interface timing,
+then checks both data directions with all four target paths active. Operation
+requires 160 MSa/s: if calibration fails, targets stay muted and the web interface
+reports the failure. There is no reduced-rate operating mode. Other Pluto
+revisions still need testing.
 The latency and signal-quality measurements, including their limits, are in
 [the measurement notes](docs/validation.md).
 
@@ -73,7 +76,7 @@ configuration interface and scene format.
 ## Building the firmware
 
 You will need Vivado/Vitis 2023.2 and Docker. The build uses a fixed ADI HDL
-revision and Maia development image; you supply the AMD tool installation.
+revision and a pinned development container; you supply the AMD tool installation.
 See [the build guide](docs/build.md) for setup.
 
 ```sh
@@ -85,7 +88,7 @@ make firmware   # assemble the firmware image
 
 The result is `build/firmware/pluto.frm`, containing the FPGA, Linux system and
 web interface. Packaging uses the kernel and root filesystem from a compatible
-Pluto/Maia FIT image that you provide. Follow the
+Pluto FIT image that you provide. Maia is not required on the device. Follow the
 [installation and recovery guide](docs/firmware.md) to back up your device,
 prepare that image and flash the result. Other base firmware versions and Pluto
 revisions still need testing.
