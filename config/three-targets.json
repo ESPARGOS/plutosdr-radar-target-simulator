@@ -1,0 +1,1 @@
+{"targets":[{"enabled":true,"delay_us":0.5,"doppler_hz":-17,"gain_db":-12},{"enabled":true,"delay_us":1.5,"doppler_hz":11,"gain_db":-12},{"enabled":true,"delay_us":3.0,"doppler_hz":26,"gain_db":-12}]}

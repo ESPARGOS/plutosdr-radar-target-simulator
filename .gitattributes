@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+# Patch context lines and the bundled font license retain upstream whitespace.
+*.patch -whitespace
+web/fonts.css -whitespace
+
+LICENSES/* -whitespace

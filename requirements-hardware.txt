@@ -1,0 +1,3 @@
+-r requirements-test.txt
+pyadi-iio>=0.0.16,<1
+# Also install libiio and the dependencies of your pyespargos checkout.

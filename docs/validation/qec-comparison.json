@@ -1,0 +1,734 @@
+[
+  {
+    "capture": "build/latency-round4/output-hold/qec-slow-low.npz",
+    "sample_rate_hz": 160000000,
+    "pluto_targets_muted": true,
+    "tx_attenuation_db": 60.0,
+    "rx_lo_offset_hz": 32823.08714219796,
+    "clock_ratio": 1.000013701095934,
+    "input_peak": 429.0,
+    "bins_width_hz": 3051.7578125,
+    "rx_mirror": {
+      "power_dbc": -66.41029638793603,
+      "nearby_floor_dbc": -67.59129272723251,
+      "excess_dbc": -72.64277899267817
+    },
+    "source_tx_mirror": {
+      "power_dbc": -31.283437790270728,
+      "nearby_floor_dbc": -64.73548018637527,
+      "excess_dbc": -31.285399696125815
+    },
+    "timecourse": [
+      {
+        "elapsed_s": 0.37646883499837713,
+        "rx_lo_offset_hz": 32801.78325580208,
+        "clock_ratio": 1.0000137882686229,
+        "input_peak": 436.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.95228712137489,
+          "nearby_floor_dbc": -66.78864500137566,
+          "excess_dbc": -67.14378754167468
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.221016899100327,
+          "nearby_floor_dbc": -67.91242423004847,
+          "excess_dbc": -31.221947342800163
+        }
+      },
+      {
+        "elapsed_s": 2.7547517490020255,
+        "rx_lo_offset_hz": 32833.54971974272,
+        "clock_ratio": 1.0000137607759647,
+        "input_peak": 427.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.274114792236624,
+          "nearby_floor_dbc": -66.30454801420599,
+          "excess_dbc": -66.26437438793324
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.106431141189606,
+          "nearby_floor_dbc": -65.34484768617104,
+          "excess_dbc": -31.108068050050694
+        }
+      },
+      {
+        "elapsed_s": 5.121204187998956,
+        "rx_lo_offset_hz": 32829.90964010008,
+        "clock_ratio": 1.0000137416115866,
+        "input_peak": 447.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.27865743440685,
+          "nearby_floor_dbc": -63.55645510655313,
+          "excess_dbc": null
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.110508298176786,
+          "nearby_floor_dbc": -66.83084268931077,
+          "excess_dbc": -31.11167191248167
+        }
+      },
+      {
+        "elapsed_s": 7.503269895001722,
+        "rx_lo_offset_hz": 32837.43435234033,
+        "clock_ratio": 1.0000136231315089,
+        "input_peak": 432.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -62.89096696533616,
+          "nearby_floor_dbc": -66.29326907702291,
+          "excess_dbc": -65.54173682466725
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.096023156492603,
+          "nearby_floor_dbc": -64.78107246964522,
+          "excess_dbc": -31.09788255443727
+        }
+      },
+      {
+        "elapsed_s": 9.878130482000415,
+        "rx_lo_offset_hz": 32817.681907913815,
+        "clock_ratio": 1.0000138105155294,
+        "input_peak": 430.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -64.44225164106734,
+          "nearby_floor_dbc": -66.03475442747025,
+          "excess_dbc": -69.57124006944679
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.125858130769274,
+          "nearby_floor_dbc": -63.58962857321561,
+          "excess_dbc": -31.128321505204106
+        }
+      },
+      {
+        "elapsed_s": 12.252850839999155,
+        "rx_lo_offset_hz": 32828.69751640195,
+        "clock_ratio": 1.0000137777920135,
+        "input_peak": 447.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.68720280062055,
+          "nearby_floor_dbc": -65.23307967990112,
+          "excess_dbc": null
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.09828991376967,
+          "nearby_floor_dbc": -67.29283809391171,
+          "excess_dbc": -31.099333147580474
+        }
+      },
+      {
+        "elapsed_s": 14.631025841998053,
+        "rx_lo_offset_hz": 32809.16893730977,
+        "clock_ratio": 1.0000137676785847,
+        "input_peak": 441.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.65176901131505,
+          "nearby_floor_dbc": -68.14331065296146,
+          "excess_dbc": -65.55957416312894
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.06434649837706,
+          "nearby_floor_dbc": -66.48702718067035,
+          "excess_dbc": -31.0655926719877
+        }
+      },
+      {
+        "elapsed_s": 16.997759409998253,
+        "rx_lo_offset_hz": 32807.60056961061,
+        "clock_ratio": 1.0000136522718999,
+        "input_peak": 434.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -64.05833886649341,
+          "nearby_floor_dbc": -67.0145644552589,
+          "excess_dbc": -67.12339497331573
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.076358992844547,
+          "nearby_floor_dbc": -67.07972710615466,
+          "excess_dbc": -31.077449182378277
+        }
+      },
+      {
+        "elapsed_s": 19.368865263997577,
+        "rx_lo_offset_hz": 32818.753303477635,
+        "clock_ratio": 1.000013757531969,
+        "input_peak": 438.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.31655465604574,
+          "nearby_floor_dbc": -66.08674670849402,
+          "excess_dbc": -66.58101822109272
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.155438239124706,
+          "nearby_floor_dbc": -67.01248998456948,
+          "excess_dbc": -31.156565788355415
+        }
+      },
+      {
+        "elapsed_s": 21.748268436997023,
+        "rx_lo_offset_hz": 32806.15285960313,
+        "clock_ratio": 1.0000138262128742,
+        "input_peak": 447.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.06938833632938,
+          "nearby_floor_dbc": -67.1772860971542,
+          "excess_dbc": -69.22013943745868
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.191843737902172,
+          "nearby_floor_dbc": -68.03295987251661,
+          "excess_dbc": -31.1927426508639
+        }
+      },
+      {
+        "elapsed_s": 24.11731575000158,
+        "rx_lo_offset_hz": 32812.93967703046,
+        "clock_ratio": 1.0000137419833068,
+        "input_peak": 431.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.47684099813878,
+          "nearby_floor_dbc": -64.93520179197401,
+          "excess_dbc": -68.92482894733388
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.008604688472445,
+          "nearby_floor_dbc": -65.07719117360291,
+          "excess_dbc": -31.010306889193092
+        }
+      },
+      {
+        "elapsed_s": 26.484147418996145,
+        "rx_lo_offset_hz": 32812.27771290254,
+        "clock_ratio": 1.0000137319176075,
+        "input_peak": 447.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -62.542779292483374,
+          "nearby_floor_dbc": -66.38568341141391,
+          "excess_dbc": -64.85470723011014
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.23303273964484,
+          "nearby_floor_dbc": -65.9363418474736,
+          "excess_dbc": -31.234503449267372
+        }
+      },
+      {
+        "elapsed_s": 28.866337352999835,
+        "rx_lo_offset_hz": 32813.311784831414,
+        "clock_ratio": 1.0000136687115013,
+        "input_peak": 440.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.9004094757268,
+          "nearby_floor_dbc": -68.28276140758408,
+          "excess_dbc": -65.86963983430613
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.261803301602633,
+          "nearby_floor_dbc": -66.20734760767189,
+          "excess_dbc": -31.26319421286734
+        }
+      }
+    ],
+    "scope": "RX image plus reflected TX image if targets active; source mirror separated using measured LO offset"
+  },
+  {
+    "capture": "build/latency-round4/output-hold/qec-slow-edge.npz",
+    "sample_rate_hz": 160000000,
+    "pluto_targets_muted": true,
+    "tx_attenuation_db": 60.0,
+    "rx_lo_offset_hz": 32884.67056810443,
+    "clock_ratio": 1.0000139462097195,
+    "input_peak": 378.0,
+    "bins_width_hz": 3051.7578125,
+    "rx_mirror": {
+      "power_dbc": -64.92300028089221,
+      "nearby_floor_dbc": -68.07657758705963,
+      "excess_dbc": -67.7945991535247
+    },
+    "source_tx_mirror": {
+      "power_dbc": -31.40549833728769,
+      "nearby_floor_dbc": -66.63072467733758,
+      "excess_dbc": -31.406802485297824
+    },
+    "timecourse": [
+      {
+        "elapsed_s": 0.36843114999646787,
+        "rx_lo_offset_hz": 32871.715506076,
+        "clock_ratio": 1.0000137545722831,
+        "input_peak": 397.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.42148530310772,
+          "nearby_floor_dbc": -66.58368831093225,
+          "excess_dbc": -71.71465878520746
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.42206761533449,
+          "nearby_floor_dbc": -63.86441983807012,
+          "excess_dbc": -31.424543171938396
+        }
+      },
+      {
+        "elapsed_s": 2.7465675009952975,
+        "rx_lo_offset_hz": 32879.39233461048,
+        "clock_ratio": 1.0000137196086276,
+        "input_peak": 395.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -62.85652114384242,
+          "nearby_floor_dbc": -65.91176905482382,
+          "excess_dbc": -65.82233358042431
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.441795038119665,
+          "nearby_floor_dbc": -63.72868171410636,
+          "excess_dbc": -31.444360844777485
+        }
+      },
+      {
+        "elapsed_s": 5.125724029996491,
+        "rx_lo_offset_hz": 32895.32142591767,
+        "clock_ratio": 1.0000138114777446,
+        "input_peak": 381.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -64.19573450636696,
+          "nearby_floor_dbc": -66.71618691885078,
+          "excess_dbc": -67.75824068375046
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.514137360492942,
+          "nearby_floor_dbc": -65.17932017818846,
+          "excess_dbc": -31.516005285440308
+        }
+      },
+      {
+        "elapsed_s": 7.493334044993389,
+        "rx_lo_offset_hz": 32890.86839812842,
+        "clock_ratio": 1.0000139148754923,
+        "input_peak": 396.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.71472214468966,
+          "nearby_floor_dbc": -65.77142223406226,
+          "excess_dbc": -84.58504702390499
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.541640088373825,
+          "nearby_floor_dbc": -68.42383663894927,
+          "excess_dbc": -31.542530537635084
+        }
+      },
+      {
+        "elapsed_s": 9.874044523996417,
+        "rx_lo_offset_hz": 32882.543072534405,
+        "clock_ratio": 1.0000138936589047,
+        "input_peak": 392.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -64.2133052126001,
+          "nearby_floor_dbc": -64.60909063676927,
+          "excess_dbc": -74.81294030123514
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.49620335113118,
+          "nearby_floor_dbc": -66.15868030985413,
+          "excess_dbc": -31.497687955873673
+        }
+      },
+      {
+        "elapsed_s": 12.268554908994702,
+        "rx_lo_offset_hz": 32883.944987706454,
+        "clock_ratio": 1.0000137461187422,
+        "input_peak": 403.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.13157363092715,
+          "nearby_floor_dbc": -65.80373223537437,
+          "excess_dbc": -66.50858251473247
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.394270217345444,
+          "nearby_floor_dbc": -66.56421936177034,
+          "excess_dbc": -31.39559107323796
+        }
+      },
+      {
+        "elapsed_s": 14.648057082995365,
+        "rx_lo_offset_hz": 32888.18260548768,
+        "clock_ratio": 1.0000138911260301,
+        "input_peak": 397.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -63.66524499923742,
+          "nearby_floor_dbc": -67.15620613479447,
+          "excess_dbc": -66.24282019195033
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.43065507400946,
+          "nearby_floor_dbc": -66.7666257870848,
+          "excess_dbc": -31.431926382079567
+        }
+      },
+      {
+        "elapsed_s": 17.017730938998284,
+        "rx_lo_offset_hz": 32873.50190202964,
+        "clock_ratio": 1.0000137694868245,
+        "input_peak": 389.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.95094140760925,
+          "nearby_floor_dbc": -66.16819490629054,
+          "excess_dbc": -79.06729065529198
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.360369074264483,
+          "nearby_floor_dbc": -67.50280586060448,
+          "excess_dbc": -31.361424902867284
+        }
+      },
+      {
+        "elapsed_s": 19.39745158900041,
+        "rx_lo_offset_hz": 32871.990512167285,
+        "clock_ratio": 1.0000140842910663,
+        "input_peak": 396.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -64.07558832111916,
+          "nearby_floor_dbc": -66.21524335817811,
+          "excess_dbc": -68.17598685436616
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.268418564554928,
+          "nearby_floor_dbc": -66.9450944111161,
+          "excess_dbc": -31.26959393696984
+        }
+      },
+      {
+        "elapsed_s": 21.77515094899718,
+        "rx_lo_offset_hz": 32879.38805977804,
+        "clock_ratio": 1.0000137261856876,
+        "input_peak": 386.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.24610984843352,
+          "nearby_floor_dbc": -66.60298211673395,
+          "excess_dbc": -70.95935004873427
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.443827934329136,
+          "nearby_floor_dbc": -64.21012163290851,
+          "excess_dbc": -31.446125509954168
+        }
+      },
+      {
+        "elapsed_s": 24.16058467899711,
+        "rx_lo_offset_hz": 32883.81199522255,
+        "clock_ratio": 1.000013778149103,
+        "input_peak": 383.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -66.92445604822335,
+          "nearby_floor_dbc": -65.82388430329607,
+          "excess_dbc": null
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.308691578422977,
+          "nearby_floor_dbc": -68.39253933255036,
+          "excess_dbc": -31.309541623658422
+        }
+      },
+      {
+        "elapsed_s": 26.531905992997054,
+        "rx_lo_offset_hz": 32879.38563731303,
+        "clock_ratio": 1.0000138609058196,
+        "input_peak": 374.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.98736730031479,
+          "nearby_floor_dbc": -68.66320571611833,
+          "excess_dbc": -69.36005193828811
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.457240714085938,
+          "nearby_floor_dbc": -68.04286072163173,
+          "excess_dbc": -31.45819410273971
+        }
+      },
+      {
+        "elapsed_s": 28.905790990997048,
+        "rx_lo_offset_hz": 32879.43497380207,
+        "clock_ratio": 1.0000138783722416,
+        "input_peak": 391.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -65.13650112685097,
+          "nearby_floor_dbc": -65.86310342581777,
+          "excess_dbc": -73.25961367784544
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.37991413702354,
+          "nearby_floor_dbc": -65.53414617066692,
+          "excess_dbc": -31.3815830917393
+        }
+      }
+    ],
+    "scope": "RX image plus reflected TX image if targets active; source mirror separated using measured LO offset"
+  },
+  {
+    "capture": "build/latency-round4/output-hold/qec-default-low.npz",
+    "sample_rate_hz": 160000000,
+    "pluto_targets_muted": true,
+    "tx_attenuation_db": 60.0,
+    "rx_lo_offset_hz": 32923.67140789547,
+    "clock_ratio": 1.0000139205457304,
+    "input_peak": 433.0,
+    "bins_width_hz": 3051.7578125,
+    "rx_mirror": {
+      "power_dbc": -60.093985437534,
+      "nearby_floor_dbc": -66.17458582144424,
+      "excess_dbc": -61.32355545322328
+    },
+    "source_tx_mirror": {
+      "power_dbc": -31.030098571819774,
+      "nearby_floor_dbc": -65.51759804483649,
+      "excess_dbc": -31.031644223549687
+    },
+    "timecourse": [
+      {
+        "elapsed_s": 0.3685372340041795,
+        "rx_lo_offset_hz": 32917.853640258734,
+        "clock_ratio": 1.000013780373777,
+        "input_peak": 432.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -59.3470437526168,
+          "nearby_floor_dbc": -66.69329618121105,
+          "excess_dbc": -60.23139898435862
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.0686197768257,
+          "nearby_floor_dbc": -67.00050305401555,
+          "excess_dbc": -31.069728061675896
+        }
+      },
+      {
+        "elapsed_s": 2.7368005770040327,
+        "rx_lo_offset_hz": 32932.03303848147,
+        "clock_ratio": 1.0000138532131602,
+        "input_peak": 418.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.78900559667577,
+          "nearby_floor_dbc": -65.65648933193165,
+          "excess_dbc": -59.789204864216934
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.131913140327487,
+          "nearby_floor_dbc": -64.46114168104829,
+          "excess_dbc": -31.13393133178179
+        }
+      },
+      {
+        "elapsed_s": 5.118694484001026,
+        "rx_lo_offset_hz": 32941.87001355327,
+        "clock_ratio": 1.000013793314505,
+        "input_peak": 431.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -56.42078772579855,
+          "nearby_floor_dbc": -65.88771446307221,
+          "excess_dbc": -56.941843200993254
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.13187151684343,
+          "nearby_floor_dbc": -64.30675092004489,
+          "excess_dbc": -31.133962742642463
+        }
+      },
+      {
+        "elapsed_s": 7.489876493003976,
+        "rx_lo_offset_hz": 32943.09659862075,
+        "clock_ratio": 1.0000137946088887,
+        "input_peak": 438.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.8695746917285,
+          "nearby_floor_dbc": -66.57349538714821,
+          "excess_dbc": -59.677073263992824
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.057873884128014,
+          "nearby_floor_dbc": -65.99927737277964,
+          "excess_dbc": -31.059266122413934
+        }
+      },
+      {
+        "elapsed_s": 9.877252164005768,
+        "rx_lo_offset_hz": 32928.767986041916,
+        "clock_ratio": 1.0000138382337433,
+        "input_peak": 430.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.516678629866625,
+          "nearby_floor_dbc": -64.62335539132745,
+          "excess_dbc": -59.73774870300086
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.12525258564874,
+          "nearby_floor_dbc": -64.63138332950533,
+          "excess_dbc": -31.127190203443043
+        }
+      },
+      {
+        "elapsed_s": 12.2542936739992,
+        "rx_lo_offset_hz": 32935.893385315445,
+        "clock_ratio": 1.0000138138011352,
+        "input_peak": 453.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -57.67686883029925,
+          "nearby_floor_dbc": -65.32658551970327,
+          "excess_dbc": -58.49552729649302
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.233908594904264,
+          "nearby_floor_dbc": -64.66758202869995,
+          "excess_dbc": -31.235878818315893
+        }
+      },
+      {
+        "elapsed_s": 14.622108973999275,
+        "rx_lo_offset_hz": 32925.09986010069,
+        "clock_ratio": 1.0000138197831385,
+        "input_peak": 430.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -60.27695108277953,
+          "nearby_floor_dbc": -67.64182658784306,
+          "excess_dbc": -61.15711141923726
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.169028199435115,
+          "nearby_floor_dbc": -68.90108130212911,
+          "excess_dbc": -31.16976037563791
+        }
+      },
+      {
+        "elapsed_s": 16.992891576999682,
+        "rx_lo_offset_hz": 32928.72107705701,
+        "clock_ratio": 1.00001380647294,
+        "input_peak": 433.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.26594922950875,
+          "nearby_floor_dbc": -65.90336852801555,
+          "excess_dbc": -59.08716304298884
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.08977656322502,
+          "nearby_floor_dbc": -67.11216698843157,
+          "excess_dbc": -31.09086198752182
+        }
+      },
+      {
+        "elapsed_s": 19.374647253003786,
+        "rx_lo_offset_hz": 32924.36026405356,
+        "clock_ratio": 1.0000138226355533,
+        "input_peak": 433.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.89158245923922,
+          "nearby_floor_dbc": -67.92728022258433,
+          "excess_dbc": -59.4708169481587
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.113620184235003,
+          "nearby_floor_dbc": -67.20976526413308,
+          "excess_dbc": -31.114687328560642
+        }
+      },
+      {
+        "elapsed_s": 21.752902168998844,
+        "rx_lo_offset_hz": 32921.87703225045,
+        "clock_ratio": 1.0000138716990001,
+        "input_peak": 430.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -58.86530789850567,
+          "nearby_floor_dbc": -65.9066475415998,
+          "excess_dbc": -59.82159350187931
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.074012957037993,
+          "nearby_floor_dbc": -68.3586789565336,
+          "excess_dbc": -31.07482458741345
+        }
+      },
+      {
+        "elapsed_s": 24.12148855000123,
+        "rx_lo_offset_hz": 32910.192288740014,
+        "clock_ratio": 1.0000138775830467,
+        "input_peak": 424.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -59.81123593451735,
+          "nearby_floor_dbc": -67.04274334205833,
+          "excess_dbc": -60.7219308363569
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.09943887923787,
+          "nearby_floor_dbc": -66.61173066169684,
+          "excess_dbc": -31.100659599540386
+        }
+      },
+      {
+        "elapsed_s": 26.54817535100301,
+        "rx_lo_offset_hz": 32929.619709396306,
+        "clock_ratio": 1.0000139015047531,
+        "input_peak": 447.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -57.56601179794498,
+          "nearby_floor_dbc": -65.33937469953047,
+          "excess_dbc": -58.35945601562215
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.062751955442174,
+          "nearby_floor_dbc": -65.56655995411688,
+          "excess_dbc": -31.06429181283364
+        }
+      },
+      {
+        "elapsed_s": 28.92215035600384,
+        "rx_lo_offset_hz": 32915.49744127767,
+        "clock_ratio": 1.0000140286488428,
+        "input_peak": 440.0,
+        "bins_width_hz": 3051.7578125,
+        "rx_mirror": {
+          "power_dbc": -57.801744354268365,
+          "nearby_floor_dbc": -70.44239975899079,
+          "excess_dbc": -58.044862844052865
+        },
+        "source_tx_mirror": {
+          "power_dbc": -31.00213146099335,
+          "nearby_floor_dbc": -64.40894153712327,
+          "excess_dbc": -31.004113911814137
+        }
+      }
+    ],
+    "scope": "RX image plus reflected TX image if targets active; source mirror separated using measured LO offset"
+  }
+]

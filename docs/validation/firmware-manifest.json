@@ -1,0 +1,11 @@
+{
+  "web/index.html": "527c6c965d1c62c809a6275c856b5e7e6796cd04c986fff7a73d171ec643b4f9",
+  "web/app.js": "d7bfa73d8d5bd9828057c9b59aa9aa8d3923e63199451bf25dc7f8cf29beeb9e",
+  "web/style.css": "2e919cb4211d2921dd7284a6532c23ce752e7cdcaee133b1db38216bf4c18463",
+  "web/fonts.css": "d817d61dd6a6a9c2394eb9859f3203ff07899ea1f5a46a1d46cfd03e857434a8",
+  "web/favicon.ico": "35fa42ea91642b51451721c422d1127cd84b287ca008591d5ed0860b0e60b7d5",
+  "host/radar_cgi.c": "a47e1519c19c86ef2f8e9e0fb17da1ee5a86d3d4daf83223467bc59d1c6ca760",
+  "build/radar.cgi": "046cb7aefb37e022d18562ebb6dabb5b80758f1af59608f6aa2c4e89c3d134b4",
+  "build/firmware/pluto.frm": "2d381f503f6a1243ac751d1648b87241d11eb876c4ba1cda72d004cb5055b663",
+  "build/firmware/radar.bit": "cefc8f6571eebc1d664d293909c3947f9e7d7ae60f2bf5a1c0a548b368a625f4"
+}

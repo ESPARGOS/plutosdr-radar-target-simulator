@@ -1,0 +1,24 @@
+# Downloaded tools, local hardware state and generated artifacts
+/vendor/
+/build/
+/.Xil/
+__pycache__/
+*.py[cod]
+*.log
+*.jou
+*.str
+*.wdb
+*.vcd
+*.bit
+*.bin
+*.frm
+*.itb
+*.dfu
+*.npz
+*.npy
+.venv/
+.env
+.env.*
+!.env.example
+/config/lab.local.json
+.DS_Store

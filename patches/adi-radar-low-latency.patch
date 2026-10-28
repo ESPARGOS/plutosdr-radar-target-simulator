@@ -1,0 +1,160 @@
+--- a/library/axi_ad9361/axi_ad9361.v
++++ b/library/axi_ad9361/axi_ad9361.v
+@@ -40,6 +40,7 @@
+   // parameters
+ 
+   parameter   ID = 0,
++  parameter   RADAR_LOW_LATENCY = 0,
+   parameter   MODE_1R1T = 0,
+   parameter   FPGA_TECHNOLOGY = 0,
+   parameter   FPGA_FAMILY = 0,
+@@ -336,6 +337,7 @@
+   assign tx_data_out_n = 6'h3f;
+ 
+   axi_ad9361_cmos_if #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .FPGA_TECHNOLOGY (FPGA_TECHNOLOGY),
+     .DAC_IODELAY_ENABLE (DAC_IODELAY_ENABLE),
+     .IO_DELAY_GROUP (IO_DELAY_GROUP),
+@@ -463,10 +465,10 @@
+   end
+   endgenerate
+ 
+-  assign adc_valid_i0 = adc_valid_i0_int;
+-  assign adc_valid_q0 = adc_valid_q0_int;
+-  assign adc_valid_i1 = adc_valid_i1_int;
+-  assign adc_valid_q1 = adc_valid_q1_int;
++  assign adc_valid_i0 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_valid_i0_s : adc_valid_i0_int;
++  assign adc_valid_q0 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_valid_q0_s : adc_valid_q0_int;
++  assign adc_valid_i1 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_valid_i1_s : adc_valid_i1_int;
++  assign adc_valid_q1 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_valid_q1_s : adc_valid_q1_int;
+ 
+   always @(posedge clk) begin
+     adc_valid_i0_int <= tdd_rx_valid_s & adc_valid_i0_s;
+@@ -475,10 +477,10 @@
+     adc_valid_q1_int <= tdd_rx_valid_s & adc_valid_q1_s;
+   end
+ 
+-  assign adc_data_i0 = adc_data_i0_int;
+-  assign adc_data_q0 = adc_data_q0_int;
+-  assign adc_data_i1 = adc_data_i1_int;
+-  assign adc_data_q1 = adc_data_q1_int;
++  assign adc_data_i0 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_data_i0_s : adc_data_i0_int;
++  assign adc_data_q0 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_data_q0_s : adc_data_q0_int;
++  assign adc_data_i1 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_data_i1_s : adc_data_i1_int;
++  assign adc_data_q1 = (RADAR_LOW_LATENCY && TDD_DISABLE) ? adc_data_q1_s : adc_data_q1_int;
+ 
+   always @(posedge clk) begin
+     adc_data_i0_int <= adc_data_i0_s;
+@@ -661,6 +663,7 @@
+   // transmit
+ 
+   axi_ad9361_tx #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .ID (ID),
+     .FPGA_TECHNOLOGY (FPGA_TECHNOLOGY),
+     .FPGA_FAMILY (FPGA_FAMILY),
+--- a/library/axi_ad9361/axi_ad9361_tx.v
++++ b/library/axi_ad9361/axi_ad9361_tx.v
+@@ -40,6 +40,7 @@
+   // parameters
+ 
+   parameter   ID = 0,
++  parameter   RADAR_LOW_LATENCY = 0,
+   parameter   FPGA_TECHNOLOGY = 0,
+   parameter   FPGA_FAMILY = 0,
+   parameter   SPEED_GRADE = 0,
+@@ -222,6 +223,7 @@
+   // dac channel
+ 
+   axi_ad9361_tx_channel #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .CHANNEL_ID (0),
+     .Q_OR_I_N (0),
+     .DISABLE (0),
+@@ -258,6 +260,7 @@
+   // dac channel
+ 
+   axi_ad9361_tx_channel #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .CHANNEL_ID (1),
+     .Q_OR_I_N (1),
+     .DISABLE (0),
+@@ -294,6 +297,7 @@
+   // dac channel
+ 
+   axi_ad9361_tx_channel #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .CHANNEL_ID (2),
+     .Q_OR_I_N (0),
+     .DISABLE (MODE_1R1T),
+@@ -330,6 +334,7 @@
+   // dac channel
+ 
+   axi_ad9361_tx_channel #(
++    .RADAR_LOW_LATENCY (RADAR_LOW_LATENCY),
+     .CHANNEL_ID (3),
+     .Q_OR_I_N (1),
+     .DISABLE (MODE_1R1T),
+--- a/library/axi_ad9361/axi_ad9361_tx_channel.v
++++ b/library/axi_ad9361/axi_ad9361_tx_channel.v
+@@ -40,6 +40,7 @@
+   // parameters
+ 
+   parameter   Q_OR_I_N = 0,
++  parameter   RADAR_LOW_LATENCY = 0,
+   parameter   CHANNEL_ID = 32'h0,
+   parameter   DISABLE = 0,
+   parameter   DAC_DDS_DISABLE = 0,
+@@ -266,7 +267,13 @@
+   // dac iq correction
+ 
+   assign dac_enable = dac_enable_int;
+-  assign dac_data = dac_data_int;
++  // Continuous radar samples bypass source-mux and output holding registers.
++  // Retain PN/DDS/loopback paths for interface calibration.
++  // Source 10 is an explicit diagnostic RX-to-TX bypass for RF latency tests.
++  // Source 2 remains the normal four-target bank; calibration sources unchanged.
++  assign dac_data = (RADAR_LOW_LATENCY && dac_data_sel_s == 4'ha) ? adc_data :
++                    (RADAR_LOW_LATENCY && IQCORRECTION_DISABLE && dac_data_sel_s == 4'h2)
++                    ? dma_data[15:4] : dac_data_int;
+ 
+   always @(posedge dac_clk) begin
+     dac_enable_int <= (dac_data_sel_s == 4'h2) ? 1'b1 : 1'b0;
+--- a/library/axi_ad9361/xilinx/axi_ad9361_cmos_if.v
++++ b/library/axi_ad9361/xilinx/axi_ad9361_cmos_if.v
+@@ -38,6 +38,7 @@
+ module axi_ad9361_cmos_if #(
+ 
+   parameter   FPGA_TECHNOLOGY = 0,
++  parameter   RADAR_LOW_LATENCY = 0,
+   parameter   DAC_IODELAY_ENABLE = 0,
+   parameter   IO_DELAY_GROUP = "dev_if_delay_group",
+   parameter   IODELAY_CTRL = 1,
+@@ -294,6 +295,11 @@
+     assign adc_data = adc_data_int;
+     assign adc_status = adc_status_int;
+ 
++  end else if (RADAR_LOW_LATENCY) begin
++    // clk and l_clk MUST be the same net (Pluto radar integration).
++    assign adc_valid = adc_valid_p;
++    assign adc_data = adc_data_p;
++    assign adc_status = adc_status_p;
+   end else begin /* CLK_DESKEW == 0 */
+ 
+     always @(posedge clk) begin
+@@ -363,6 +369,14 @@
+       tx_data_1 <= tx_data_1_n;
+     end
+ 
++  end else if (RADAR_LOW_LATENCY) begin
++    // Retiming data, frame and forwarded clock together preserves DDR phase.
++    always @* begin
++      tx_clk = tx_clk_p;
++      tx_frame = tx_frame_p;
++      tx_data_0 = tx_data_0_p;
++      tx_data_1 = tx_data_1_p;
++    end
+   end else begin /* CLK_DESKEW == 0 */
+ 
+     always @(posedge l_clk) begin

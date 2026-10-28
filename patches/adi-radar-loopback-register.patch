@@ -1,0 +1,23 @@
+--- a/library/axi_ad9361/axi_ad9361.v
++++ b/library/axi_ad9361/axi_ad9361.v
+@@ -597,6 +597,11 @@
+   end
+   endgenerate
+ 
++  // Register the diagnostic FPGA loopback independently of the RF datapath.
++  // This prevents a combinational TX sum -> RX mux -> target-input path.
++  reg [47:0] radar_loopback_data;
++  always @(posedge clk) radar_loopback_data <= dac_data_s;
++
+   // receive
+ 
+   axi_ad9361_rx #(
+@@ -623,7 +628,7 @@
+     .adc_status (adc_status_s),
+     .adc_r1_mode (adc_r1_mode),
+     .adc_ddr_edgesel (adc_ddr_edgesel_s),
+-    .dac_data (dac_data_s),
++    .dac_data (RADAR_LOW_LATENCY ? radar_loopback_data : dac_data_s),
+     .up_dld (up_adc_dld_s),
+     .up_dwdata (up_adc_dwdata_s),
+     .up_drdata (up_adc_drdata_s),

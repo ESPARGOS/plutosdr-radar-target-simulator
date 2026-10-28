@@ -1,0 +1,562 @@
+[
+  {
+    "capture": "build/latency-round4/output-hold/qec-broadband-normal.npz",
+    "fpga_clipped": false,
+    "sample_rate_hz": 61440000,
+    "duration_s": 29.989273600000004,
+    "tag_snr_db": 31.07181780692606,
+    "phase_fit_delay_us_by_receiver": [
+      0.7725861606663537,
+      0.7771998856367882,
+      0.7756735857006695,
+      0.7778101637719804,
+      0.7887403643172517,
+      0.7797701958737284,
+      0.7821506608699708
+    ],
+    "antenna_transfer_shape_by_receiver": [
+      {
+        "receiver": 0,
+        "amplitude_5_95_span_db": 2.773305419280586,
+        "phase_residual_rms_rad": 0.04394556718928173
+      },
+      {
+        "receiver": 1,
+        "amplitude_5_95_span_db": 1.3179543997203176,
+        "phase_residual_rms_rad": 0.04206490439673077
+      },
+      {
+        "receiver": 2,
+        "amplitude_5_95_span_db": 1.5376011010516635,
+        "phase_residual_rms_rad": 0.03108397529638061
+      },
+      {
+        "receiver": 3,
+        "amplitude_5_95_span_db": 1.5895126564048425,
+        "phase_residual_rms_rad": 0.06411563161962167
+      },
+      {
+        "receiver": 4,
+        "amplitude_5_95_span_db": 9.027965228951153,
+        "phase_residual_rms_rad": 0.0932367638273512
+      },
+      {
+        "receiver": 5,
+        "amplitude_5_95_span_db": 1.468278321935184,
+        "phase_residual_rms_rad": 0.052619628717313155
+      },
+      {
+        "receiver": 6,
+        "amplitude_5_95_span_db": 2.9154280043103924,
+        "phase_residual_rms_rad": 0.029574207950391937
+      }
+    ],
+    "segments": [
+      {
+        "time_s": 1.0,
+        "gain_db": -0.0314253549796882,
+        "phase_rad": 0.017946771432911717,
+        "residual_dbc": -19.19053442455406
+      },
+      {
+        "time_s": 3.0,
+        "gain_db": -0.015529245011773071,
+        "phase_rad": 0.018614367754967852,
+        "residual_dbc": -19.208925577520276
+      },
+      {
+        "time_s": 5.0,
+        "gain_db": 0.229946471255782,
+        "phase_rad": 0.014463208567258893,
+        "residual_dbc": -18.641127442050486
+      },
+      {
+        "time_s": 7.0,
+        "gain_db": -0.06525055498201753,
+        "phase_rad": 0.009228194699726902,
+        "residual_dbc": -17.77132050273778
+      },
+      {
+        "time_s": 9.0,
+        "gain_db": -0.03183365760093504,
+        "phase_rad": 0.010409226339815784,
+        "residual_dbc": -20.081602088491945
+      },
+      {
+        "time_s": 11.0,
+        "gain_db": -0.011526667067517716,
+        "phase_rad": 0.008402536599555352,
+        "residual_dbc": -19.28767106924372
+      },
+      {
+        "time_s": 13.0,
+        "gain_db": 0.16134067220583856,
+        "phase_rad": 0.004269008918180759,
+        "residual_dbc": -19.499279420650055
+      },
+      {
+        "time_s": 15.0,
+        "gain_db": -0.068122186282954,
+        "phase_rad": -0.00032232931725874976,
+        "residual_dbc": -19.35388227628112
+      },
+      {
+        "time_s": 17.0,
+        "gain_db": 0.10272626424858483,
+        "phase_rad": -0.0013274491341594727,
+        "residual_dbc": -20.005504853329043
+      },
+      {
+        "time_s": 19.0,
+        "gain_db": 0.008760512769650373,
+        "phase_rad": -0.0088254434649424,
+        "residual_dbc": -19.740143387034518
+      },
+      {
+        "time_s": 21.0,
+        "gain_db": -0.17593020838264062,
+        "phase_rad": -0.007013893105573943,
+        "residual_dbc": -19.074294229289354
+      },
+      {
+        "time_s": 23.0,
+        "gain_db": 0.010908795745296455,
+        "phase_rad": -0.016847873722522968,
+        "residual_dbc": -19.596903198651344
+      },
+      {
+        "time_s": 25.0,
+        "gain_db": 0.10306972037832324,
+        "phase_rad": -0.006028303433265481,
+        "residual_dbc": -16.98790012628357
+      },
+      {
+        "time_s": 27.0,
+        "gain_db": 0.025394117405755433,
+        "phase_rad": -0.016847952274528046,
+        "residual_dbc": -18.62123490953563
+      }
+    ],
+    "double_tag_dbc": -18.138255966169883,
+    "double_tag_floor_dbc": -32.11721770250594,
+    "transceiver_overflow_start": 128,
+    "transceiver_overflow_end": 128,
+    "pluto_input_peak": 294.0,
+    "pluto_input_fullscale_fraction": 0.0,
+    "segment_gain_span_db": 0.4058766796384226
+  },
+  {
+    "capture": "build/latency-round4/output-hold/qec-broadband-fast.npz",
+    "fpga_clipped": false,
+    "sample_rate_hz": 160000000,
+    "duration_s": 30.002380799999994,
+    "tag_snr_db": 31.791767827869858,
+    "phase_fit_delay_us_by_receiver": [
+      0.32841876381533947,
+      0.33274480610055607,
+      0.33141814144992665,
+      0.33383191895132297,
+      0.3444301267614811,
+      0.3354924255631649,
+      0.33754062630743453
+    ],
+    "antenna_transfer_shape_by_receiver": [
+      {
+        "receiver": 0,
+        "amplitude_5_95_span_db": 2.943341845552265,
+        "phase_residual_rms_rad": 0.04928346805858772
+      },
+      {
+        "receiver": 1,
+        "amplitude_5_95_span_db": 1.339523752946306,
+        "phase_residual_rms_rad": 0.04477895119993107
+      },
+      {
+        "receiver": 2,
+        "amplitude_5_95_span_db": 1.8204633022922891,
+        "phase_residual_rms_rad": 0.031843428590827276
+      },
+      {
+        "receiver": 3,
+        "amplitude_5_95_span_db": 1.8327577756303128,
+        "phase_residual_rms_rad": 0.06107453339360734
+      },
+      {
+        "receiver": 4,
+        "amplitude_5_95_span_db": 8.95841110229459,
+        "phase_residual_rms_rad": 0.08196527472345627
+      },
+      {
+        "receiver": 5,
+        "amplitude_5_95_span_db": 1.5774540229203318,
+        "phase_residual_rms_rad": 0.043462073944710855
+      },
+      {
+        "receiver": 6,
+        "amplitude_5_95_span_db": 3.160392671051298,
+        "phase_residual_rms_rad": 0.027367757428270884
+      }
+    ],
+    "segments": [
+      {
+        "time_s": 1.0,
+        "gain_db": 0.20297230472493213,
+        "phase_rad": 0.02112358170385086,
+        "residual_dbc": -18.661474110232877
+      },
+      {
+        "time_s": 3.0,
+        "gain_db": 0.10566650055030977,
+        "phase_rad": 0.018647581120303607,
+        "residual_dbc": -17.970991616192055
+      },
+      {
+        "time_s": 5.0,
+        "gain_db": 0.13674649712167017,
+        "phase_rad": 0.020101709564475326,
+        "residual_dbc": -18.496208096603134
+      },
+      {
+        "time_s": 7.0,
+        "gain_db": -0.2112600443163712,
+        "phase_rad": 0.01815233798164015,
+        "residual_dbc": -19.654271807001187
+      },
+      {
+        "time_s": 9.0,
+        "gain_db": -0.029794588028482713,
+        "phase_rad": 0.006977618713026066,
+        "residual_dbc": -19.376392702122104
+      },
+      {
+        "time_s": 11.0,
+        "gain_db": -0.14904815549873243,
+        "phase_rad": 0.010716348243534268,
+        "residual_dbc": -19.93493350985602
+      },
+      {
+        "time_s": 13.0,
+        "gain_db": 0.2221644950818558,
+        "phase_rad": -9.395970587951974e-05,
+        "residual_dbc": -20.074739317784726
+      },
+      {
+        "time_s": 15.0,
+        "gain_db": 0.2055618549372247,
+        "phase_rad": -0.003108703773254919,
+        "residual_dbc": -20.47118681720628
+      },
+      {
+        "time_s": 17.0,
+        "gain_db": 0.1211732738643545,
+        "phase_rad": -0.008423857034379877,
+        "residual_dbc": -19.592359259261194
+      },
+      {
+        "time_s": 19.0,
+        "gain_db": -0.05459550170176921,
+        "phase_rad": -0.00880871971914131,
+        "residual_dbc": -18.989914848928493
+      },
+      {
+        "time_s": 21.0,
+        "gain_db": -0.1925837252128418,
+        "phase_rad": -0.007983198517255572,
+        "residual_dbc": -20.530323278377107
+      },
+      {
+        "time_s": 23.0,
+        "gain_db": -0.22723107906841233,
+        "phase_rad": -0.011912874384794221,
+        "residual_dbc": -19.060188861673243
+      },
+      {
+        "time_s": 25.0,
+        "gain_db": -0.15554400384241734,
+        "phase_rad": -0.012124983105962309,
+        "residual_dbc": -19.208764440311846
+      },
+      {
+        "time_s": 27.0,
+        "gain_db": -0.07655338750045085,
+        "phase_rad": -0.01674538672579894,
+        "residual_dbc": -19.280117482408453
+      },
+      {
+        "time_s": 29.0,
+        "gain_db": -0.10598059774227556,
+        "phase_rad": -0.022320740685992872,
+        "residual_dbc": -17.74118660462377
+      }
+    ],
+    "double_tag_dbc": -18.16627741221137,
+    "double_tag_floor_dbc": -32.32365546524775,
+    "transceiver_overflow_start": 128,
+    "transceiver_overflow_end": 128,
+    "pluto_input_peak": 335.0,
+    "pluto_input_fullscale_fraction": 0.0,
+    "segment_gain_span_db": 0.4493955741502681,
+    "comparison_to_first": [
+      {
+        "receiver": 0,
+        "bins_used": 120,
+        "gain_change_db": 0.10287930372395424,
+        "amplitude_shape_5_95_span_db": 1.273700814360986,
+        "delay_change_us": -0.4441975305589174,
+        "phase_residual_rms_rad": 0.03913024751087116
+      },
+      {
+        "receiver": 1,
+        "bins_used": 120,
+        "gain_change_db": -0.07334103596609357,
+        "amplitude_shape_5_95_span_db": 0.8437764169410595,
+        "delay_change_us": -0.44441105307090084,
+        "phase_residual_rms_rad": 0.03071074931759802
+      },
+      {
+        "receiver": 2,
+        "bins_used": 120,
+        "gain_change_db": 0.0619972953647395,
+        "amplitude_shape_5_95_span_db": 0.6700241886116931,
+        "delay_change_us": -0.44420983021845867,
+        "phase_residual_rms_rad": 0.025056839024706002
+      },
+      {
+        "receiver": 3,
+        "bins_used": 120,
+        "gain_change_db": 0.2794606112611161,
+        "amplitude_shape_5_95_span_db": 1.6142597960154217,
+        "delay_change_us": -0.44397834773091827,
+        "phase_residual_rms_rad": 0.05388785599223401
+      },
+      {
+        "receiver": 4,
+        "bins_used": 119,
+        "gain_change_db": -0.5718951710500171,
+        "amplitude_shape_5_95_span_db": 2.819579234884837,
+        "delay_change_us": -0.44406483251428863,
+        "phase_residual_rms_rad": 0.11420590156702892
+      },
+      {
+        "receiver": 5,
+        "bins_used": 120,
+        "gain_change_db": -0.2958122073801069,
+        "amplitude_shape_5_95_span_db": 1.557216076172379,
+        "delay_change_us": -0.44421884753576535,
+        "phase_residual_rms_rad": 0.06055118769548109
+      },
+      {
+        "receiver": 6,
+        "bins_used": 120,
+        "gain_change_db": 0.6263156650735064,
+        "amplitude_shape_5_95_span_db": 1.1870457602409994,
+        "delay_change_us": -0.4445566564961505,
+        "phase_residual_rms_rad": 0.04020975416314974
+      }
+    ]
+  },
+  {
+    "capture": "build/latency-round4/output-hold/qec-broadband-fast-repeat.npz",
+    "fpga_clipped": false,
+    "sample_rate_hz": 160000000,
+    "duration_s": 29.9892736,
+    "tag_snr_db": 31.536479314334642,
+    "phase_fit_delay_us_by_receiver": [
+      0.32822779348246406,
+      0.3328222825103828,
+      0.33151363248367127,
+      0.3335515705562502,
+      0.34419271068158663,
+      0.3352764065878535,
+      0.3378662204377485
+    ],
+    "antenna_transfer_shape_by_receiver": [
+      {
+        "receiver": 0,
+        "amplitude_5_95_span_db": 2.9740350930177897,
+        "phase_residual_rms_rad": 0.04538823197923109
+      },
+      {
+        "receiver": 1,
+        "amplitude_5_95_span_db": 1.3072799925734664,
+        "phase_residual_rms_rad": 0.0436730489900001
+      },
+      {
+        "receiver": 2,
+        "amplitude_5_95_span_db": 1.8808772520258863,
+        "phase_residual_rms_rad": 0.03235938815255225
+      },
+      {
+        "receiver": 3,
+        "amplitude_5_95_span_db": 1.718989701477021,
+        "phase_residual_rms_rad": 0.06843007463887568
+      },
+      {
+        "receiver": 4,
+        "amplitude_5_95_span_db": 9.039267789620041,
+        "phase_residual_rms_rad": 0.07741170842899837
+      },
+      {
+        "receiver": 5,
+        "amplitude_5_95_span_db": 1.5731170796927216,
+        "phase_residual_rms_rad": 0.04662544565166685
+      },
+      {
+        "receiver": 6,
+        "amplitude_5_95_span_db": 3.0143086692768843,
+        "phase_residual_rms_rad": 0.025379691716160998
+      }
+    ],
+    "segments": [
+      {
+        "time_s": 1.0,
+        "gain_db": -0.011999650642658115,
+        "phase_rad": 0.015696614132256155,
+        "residual_dbc": -19.09846914252321
+      },
+      {
+        "time_s": 3.0,
+        "gain_db": -0.2587002940305282,
+        "phase_rad": 0.01553329346527213,
+        "residual_dbc": -19.314432941456094
+      },
+      {
+        "time_s": 5.0,
+        "gain_db": -0.031243138057873945,
+        "phase_rad": 0.01243290862798868,
+        "residual_dbc": -19.423304105320724
+      },
+      {
+        "time_s": 7.0,
+        "gain_db": -0.14130092255169444,
+        "phase_rad": 0.015448555246730784,
+        "residual_dbc": -19.436034503301457
+      },
+      {
+        "time_s": 9.0,
+        "gain_db": 0.21015211170046366,
+        "phase_rad": 0.010394123722445798,
+        "residual_dbc": -18.154985376173972
+      },
+      {
+        "time_s": 11.0,
+        "gain_db": -0.038650290767913445,
+        "phase_rad": 0.011940317894338704,
+        "residual_dbc": -20.662125112524503
+      },
+      {
+        "time_s": 13.0,
+        "gain_db": -0.07436096360564479,
+        "phase_rad": 0.007292092711317128,
+        "residual_dbc": -20.77693137884272
+      },
+      {
+        "time_s": 15.0,
+        "gain_db": -0.07503643197000749,
+        "phase_rad": -0.0004724776292608886,
+        "residual_dbc": -20.126339734322528
+      },
+      {
+        "time_s": 17.0,
+        "gain_db": 0.04530617029103962,
+        "phase_rad": -0.008107427678119436,
+        "residual_dbc": -20.209894228845606
+      },
+      {
+        "time_s": 19.0,
+        "gain_db": -0.039290915789493765,
+        "phase_rad": -0.009625658840978485,
+        "residual_dbc": -19.81345457578314
+      },
+      {
+        "time_s": 21.0,
+        "gain_db": 0.05679548814471268,
+        "phase_rad": -0.012972685571318214,
+        "residual_dbc": -18.81224533599957
+      },
+      {
+        "time_s": 23.0,
+        "gain_db": 0.14904203761058538,
+        "phase_rad": -0.008166999988270866,
+        "residual_dbc": -19.72046808602049
+      },
+      {
+        "time_s": 25.0,
+        "gain_db": 0.11848754181875479,
+        "phase_rad": -0.019375183583789337,
+        "residual_dbc": -17.887226138476972
+      },
+      {
+        "time_s": 27.0,
+        "gain_db": 0.14056625774290965,
+        "phase_rad": -0.018577432843941196,
+        "residual_dbc": -19.356448116396248
+      }
+    ],
+    "double_tag_dbc": -18.089481111036044,
+    "double_tag_floor_dbc": -32.021967712997395,
+    "transceiver_overflow_start": 128,
+    "transceiver_overflow_end": 128,
+    "pluto_input_peak": 343.0,
+    "pluto_input_fullscale_fraction": 0.0,
+    "segment_gain_span_db": 0.46885240573099185,
+    "comparison_to_first": [
+      {
+        "receiver": 0,
+        "bins_used": 120,
+        "gain_change_db": -0.19143859008877967,
+        "amplitude_shape_5_95_span_db": 1.0554863453243768,
+        "delay_change_us": -0.44432184678404313,
+        "phase_residual_rms_rad": 0.03117465841692619
+      },
+      {
+        "receiver": 1,
+        "bins_used": 120,
+        "gain_change_db": -0.6258207296128495,
+        "amplitude_shape_5_95_span_db": 0.766839085412619,
+        "delay_change_us": -0.44434679820489864,
+        "phase_residual_rms_rad": 0.030087727548356254
+      },
+      {
+        "receiver": 2,
+        "bins_used": 120,
+        "gain_change_db": 0.4256502509312405,
+        "amplitude_shape_5_95_span_db": 0.69128654029875,
+        "delay_change_us": -0.44411849952702653,
+        "phase_residual_rms_rad": 0.024651832180775723
+      },
+      {
+        "receiver": 3,
+        "bins_used": 120,
+        "gain_change_db": 0.1067024692485268,
+        "amplitude_shape_5_95_span_db": 1.5574612521953566,
+        "delay_change_us": -0.4443013824679318,
+        "phase_residual_rms_rad": 0.05121557860114342
+      },
+      {
+        "receiver": 4,
+        "bins_used": 120,
+        "gain_change_db": -0.213732525120524,
+        "amplitude_shape_5_95_span_db": 3.81101020054884,
+        "delay_change_us": -0.4444308589953834,
+        "phase_residual_rms_rad": 0.11279284925638013
+      },
+      {
+        "receiver": 5,
+        "bins_used": 120,
+        "gain_change_db": 0.6763089739103246,
+        "amplitude_shape_5_95_span_db": 1.5401778391617114,
+        "delay_change_us": -0.4444700391249674,
+        "phase_residual_rms_rad": 0.05122811192296108
+      },
+      {
+        "receiver": 6,
+        "bins_used": 120,
+        "gain_change_db": 0.8427163144493844,
+        "amplitude_shape_5_95_span_db": 1.223383791227514,
+        "delay_change_us": -0.44427449566371413,
+        "phase_residual_rms_rad": 0.036236154555542986
+      }
+    ]
+  }
+]

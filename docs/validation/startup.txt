@@ -1,0 +1,12 @@
+{"signature":"RTS1","version":65552,"sample_rate_hz":61440000,"busy":false,"clipped":false,"mask":0,"targets":[{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0}]}
+Radio configured: 2380 MHz, 61.44 MSa/s, 20 MHz BW, RX 0 dB, TX -60 dB
+{"signature":"RTS1","version":65552,"sample_rate_hz":61440000,"busy":false,"clipped":false,"mask":0,"targets":[{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0}]}
+BBPLL:1279999994 ADC:639999997 R2:319999998 R1:159999999 RF:159999999 RXSAMP:159999999
+BBPLL:1279999994 DAC:319999998 T2:159999999 T1:159999999 TF:159999999 TXSAMP:159999999
+Interface delays: RX=0x0b TX=0x70
+RX PN: status 0 0, global 1, 10 seconds
+TX acquisition 1: status 0 0
+TX loopback: status 0 0, global 1, 10 seconds
+{"signature":"RTS1","version":65552,"sample_rate_hz":160000000,"busy":false,"clipped":false,"mask":0,"targets":[{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0}]}
+Fast radio configured: 159999999 samples/s, 20 MHz bandwidth, targets muted
+{"signature":"RTS1","version":65552,"sample_rate_hz":160000000,"busy":false,"clipped":false,"mask":0,"targets":[{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0},{"delay_samples":0,"phase_increment":0,"gain_q15":0}]}

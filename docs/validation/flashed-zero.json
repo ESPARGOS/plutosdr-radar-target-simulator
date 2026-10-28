@@ -1,0 +1,15 @@
+{
+  "capture": "build/latency-round4/output-hold/flashed-zero.npz",
+  "windows": 2095,
+  "duration_s": 12.0078336,
+  "peak_adc": 34.41518020629883,
+  "targets": [
+    {
+      "programmed_delay_us": 0,
+      "programmed_doppler_hz": 17,
+      "measured_delay_us": 0.325,
+      "measured_doppler_hz": 17.0,
+      "relative_peak_db": 0.0
+    }
+  ]
+}

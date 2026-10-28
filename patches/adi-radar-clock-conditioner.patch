@@ -1,0 +1,142 @@
+--- a/library/xilinx/common/ad_data_clk.v
++++ b/library/xilinx/common/ad_data_clk.v
+@@ -37,9 +37,13 @@
+ 
+ module ad_data_clk #(
+ 
+-  parameter   SINGLE_ENDED = 0
++  parameter   SINGLE_ENDED = 0,
++  parameter   RADAR_CLOCK_CLEANER = 0
+ ) (
+   input               rst,
++  input               clean_enable,
++  input               clean_run,
++  output              clean_locked,
+   output              locked,
+ 
+   input               clk_in_p,
+@@ -70,8 +74,29 @@
+   end
+   endgenerate
+ 
+-  BUFG i_clk_gbuf (
+-    .I (clk_ibuf_s),
+-    .O (clk));
++  generate if (RADAR_CLOCK_CLEANER == 1) begin: clean_clock
++    wire feedback, feedback_buf, conditioned, mmcm_locked;
++    wire select_clean = clean_enable & mmcm_locked;
++    // Disabled during the driver's low-rate initialization/timing scans.
++    // Enable only at 100..200 MHz: multiplier 6 keeps VCO at 600..1200 MHz.
++    MMCME2_BASE #(
++      .BANDWIDTH("LOW"), .CLKIN1_PERIOD(6.24),
++      .CLKFBOUT_MULT_F(7.0), .DIVCLK_DIVIDE(1),
++      .CLKOUT0_DIVIDE_F(7.0), .CLKOUT0_DUTY_CYCLE(0.5)
++    ) i_clean_mmcm (
++      .CLKIN1(clk_ibuf_s), .CLKFBIN(feedback_buf),
++      .CLKFBOUT(feedback), .CLKOUT0(conditioned),
++      .LOCKED(mmcm_locked), .PWRDWN(1'b0), .RST(~clean_run)
++    );
++    BUFG i_feedback (.I(feedback), .O(feedback_buf));
++    BUFGCTRL #(.INIT_OUT(0), .PRESELECT_I0("TRUE"), .PRESELECT_I1("FALSE")) i_clock_mux (
++      .I0(clk_ibuf_s), .I1(conditioned), .S0(~select_clean), .S1(select_clean),
++      .CE0(1'b1), .CE1(1'b1), .IGNORE0(1'b0), .IGNORE1(1'b0), .O(clk)
++    );
++    assign clean_locked=mmcm_locked;
++  end else begin: direct_clock
++    BUFG i_clk_gbuf (.I(clk_ibuf_s), .O(clk));
++    assign clean_locked=1'b0;
++  end endgenerate
+ 
+ endmodule
+--- a/library/axi_ad9361/axi_ad9361.v
++++ b/library/axi_ad9361/axi_ad9361.v
+@@ -86,6 +86,9 @@
+   // physical interface (receive-cmos)
+ 
+   input           rx_clk_in,
++  input           clean_enable,
++  input           clean_run,
++  output          clean_locked,
+   input           rx_frame_in,
+   input   [11:0]  rx_data_in,
+ 
+@@ -347,6 +350,9 @@
+     .DELAY_REFCLK_FREQUENCY (DELAY_REFCLK_FREQUENCY)
+   ) i_dev_if (
+     .rx_clk_in (rx_clk_in),
++    .clean_enable(clean_enable),
++    .clean_run(clean_run),
++    .clean_locked(clean_locked),
+     .rx_frame_in (rx_frame_in),
+     .rx_data_in (rx_data_in),
+     .tx_clk_out (tx_clk_out),
+--- a/library/axi_ad9361/xilinx/axi_ad9361_cmos_if.v
++++ b/library/axi_ad9361/xilinx/axi_ad9361_cmos_if.v
+@@ -50,6 +50,9 @@
+   // physical interface (receive)
+ 
+   input               rx_clk_in,
++  input               clean_enable,
++  input               clean_run,
++  output              clean_locked,
+   input               rx_frame_in,
+   input   [11:0]      rx_data_in,
+ 
+@@ -617,8 +620,12 @@
+ 
+   generate if (USE_SSI_CLK == 1) begin
+   ad_data_clk #(
+-    .SINGLE_ENDED (1)
++    .SINGLE_ENDED (1),
++    .RADAR_CLOCK_CLEANER (RADAR_LOW_LATENCY)
+   ) i_clk (
++    .clean_enable(clean_enable),
++    .clean_run(clean_run),
++    .clean_locked(clean_locked),
+     .rst (1'd0),
+     .locked (),
+     .clk_in_p (rx_clk_in),
+--- a/projects/pluto/system_constr.xdc
++++ b/projects/pluto/system_constr.xdc
+@@ -79,7 +79,7 @@
+ 
+ set_property  -dict {PACKAGE_PIN  P8   IOSTANDARD LVCMOS18} [get_ports clk_out]
+ 
+-create_clock -name rx_clk -period  16.27 [get_ports rx_clk_in]
++create_clock -name rx_clk -period  6.24 [get_ports rx_clk_in]
+ 
+ # probably gone in 2016.4
+ 
+@@ -221,3 +221,21 @@
+ set_false_path -from [get_pins {i_system_wrapper/system_i/axi_ad9361/inst/i_rx/i_up_adc_common/up_adc_gpio_out_int_reg[0]/C}]
+ set_false_path -from [get_pins {i_system_wrapper/system_i/axi_ad9361/inst/i_tx/i_up_dac_common/up_dac_gpio_out_int_reg[0]/C}]
+ 
++
++# Extra margin for the experimental overclocked source.
++set_clock_uncertainty -setup 0.750 [get_clocks rx_clk]
++set_clock_uncertainty -hold 0.150 [get_clocks rx_clk]
++
++# Raw and conditioned clocks are alternative inputs to one glitchless BUFGCTRL.
++create_generated_clock -name clean_rx_clk -source [get_ports rx_clk_in] -divide_by 1 [get_pins -hier -filter {NAME =~ *i_clean_mmcm/CLKOUT0}]
++set_clock_groups -physically_exclusive -group [get_clocks rx_clk] -group [get_clocks clean_rx_clk]
++set_clock_uncertainty -setup 0.750 [get_clocks clean_rx_clk]
++set_clock_uncertainty -hold 0.150 [get_clocks clean_rx_clk]
++
++# UG472 p45: S0/S1 may switch asynchronously without glitches; only the
++# number of old-clock pulses is uncertain. CE pins remain constant High.
++# https://www.amd.com/content/dam/xilinx/support/documents/user_guides/ug472_7Series_Clocking.pdf
++set_false_path -to [get_pins -hier -filter {NAME =~ *i_clock_mux/S0 || NAME =~ *i_clock_mux/S1}]
++
++# Improve source-synchronous TX edges at the fast interface rate.
++set_property SLEW FAST [get_ports {tx_clk_out tx_frame_out tx_data_out[*]}]
+--- a/projects/pluto/system_project.tcl
++++ b/projects/pluto/system_project.tcl
+@@ -15,6 +15,8 @@
+   "$ad_hdl_dir/library/common/ad_iobuf.v"]
+ 
+ set_property is_enabled false [get_files  *system_sys_ps7_0.xdc]
++set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
++set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+ adi_project_run pluto
+ source $ad_hdl_dir/library/axi_ad9361/axi_ad9361_delay.tcl
+ 

@@ -1,0 +1,5 @@
+# Offline analysis/oracle and Chromium CDP tests; the preview server needs none.
+numpy>=1.24,<3
+scipy>=1.10,<2
+matplotlib>=3.7,<4
+websocket-client>=1.6,<2
