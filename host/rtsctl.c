@@ -12,8 +12,8 @@ static volatile uint32_t *r;
 static void barrier(void){__sync_synchronize();}
 static int wait_idle(void){for(int i=0;i<1000;i++){barrier();if(!(r[5]&1))return 0;usleep(1000);}fprintf(stderr,"FPGA configuration timed out (RF clock stopped?)\n");return -1;}
 static int commit(void){barrier();r[4]=1;barrier();return wait_idle();}
-// IIO reports integer-rounded clocks; retain the nominal kHz rate used to
-// program the hardware, rather than displaying nanosecond rounding artifacts.
+// IIO rounds clock frequencies to integer Hz. Recover the nominal kHz rate
+// so that this rounding does not show up in the displayed target delays.
 static unsigned long hardware_sample_rate(void){
  for(int i=0;i<32;i++){
   char path[160],name[64];snprintf(path,sizeof path,"/sys/bus/iio/devices/iio:device%d/name",i);

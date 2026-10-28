@@ -1,4 +1,5 @@
-// AXI-Lite registers at 0x43c00000; bundled-data toggle handshake to RF clock.
+// AXI-Lite control registers at 0x43c00000. A toggle handshake transfers
+// settings to the RF clock domain while the mailbox data is held stable.
 module radar_axi (
  input wire s_axi_aclk, s_axi_aresetn,
  input wire [11:0] s_axi_awaddr, input wire [2:0] s_axi_awprot,
@@ -107,8 +108,8 @@ module radar_axi (
      end
    end
  end
- // Mailbox is held stable until acknowledgment. Two synchronizer stages plus
- // one capture edge give bundled data time to settle. See radar_cdc.xdc.
+ // Hold the mailbox until the RF side acknowledges it. Two synchronizer
+ // stages and a capture edge allow the data to settle; see radar_cdc.xdc.
  integer t;
  always @(posedge sample_clk) begin
    if(rf_reset) begin

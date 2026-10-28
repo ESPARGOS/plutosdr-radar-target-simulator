@@ -1,16 +1,15 @@
-# Firmware, deployment and recovery
+# Installing and recovering the firmware
 
 ## Compatibility
 
-The tested device is a **Rev.B Pluto running a Maia-derived Linux image**. The
+The firmware has been tested on a **Rev.B Pluto running Maia Linux**. The
 packager retains that image's kernel, root filesystem, USB/network setup and
-three revision-specific device trees. It disables Maia FPGA users and installs
-the radar bitstream, tools, boot service and web files.
+three revision-specific device trees. It stops the Maia services that use the FPGA and installs
+the radar bitstream, control programs, startup script and web interface.
 
-This repository does not provide a Linux/Buildroot build or a redistributable
-base image. It requires `build/firmware/original.itb` from a compatible system.
-A factory firmware image, another revision or another kernel is not qualified
-by the existing measurements. In particular, the driver must provide the
+You need a compatible base image at `build/firmware/original.itb`; the build
+reuses its Linux kernel and root filesystem. Other kernels, factory firmware
+and other Pluto revisions still need testing. The driver must provide the
 AD9361 IIO/debug attributes used by `radio_fast_setup.sh`, including
 `adi,qec-tracking-slow-mode-enable`, and the retained reserved-memory layout.
 
@@ -19,9 +18,9 @@ rootfs; check `dumpimage -l` before packaging. Keep the base firmware's source
 version and license records with any distributed binary release. Do not assume
 the project license covers Linux, BusyBox, ADI/AMD IP or the base image.
 
-## Back up first
+## Backing up the existing firmware
 
-Keep your device's original firmware and recovery method before installing.
+Save the original firmware before installing, so you can recover it if needed.
 The following reads only `qspi-linux`; verify its partition name is `mtd3` on
 **your** device before using these example commands:
 
@@ -37,7 +36,8 @@ Use your configured SSH credentials. The stock Pluto password is `analog`;
 never put a personal password or private key in the repository. A saved compatible
 `.frm` can also be passed to `import_base_firmware.py`. It checks the FIT header
 and FRM checksum when present, and refuses to replace a different existing base.
-These checks do not prove kernel/hardware compatibility.
+The importer checks the file format, but cannot tell whether its kernel supports
+the required radio controls.
 
 ## Build an all-in-one image
 
@@ -54,7 +54,7 @@ The `.frm` is the complete application firmware update, not a bootloader image.
 Device-tree hashes are deliberately omitted: Pluto U-Boot patches the DTBs
 before boot, as in the base firmware. Other FIT components have hashes.
 
-## Volatile deployment
+## Trying a bitstream without flashing
 
 ```sh
 make tools
@@ -63,14 +63,14 @@ make tools
 
 This loads FPGA RAM and configures the radio without changing flash. It stops
 Maia services, temporarily rebinds radio drivers, preserves the USB gadget and
-leaves targets muted. Reboot restores the installed image. This path installs
-FPGA/radio helpers, not the persistent web interface.
+leaves targets muted. Reboot restores the installed image. This command copies
+the FPGA and radio tools; use the firmware image to install the web interface.
 
-## Persistent installation
+## Writing the firmware to flash
 
-The tested SSH updater writes only the `qspi-linux` partition. On the supported
-Rev.B layout it checks model, partition name and image checksum, mutes targets,
-flashes, verifies the entire written image, and updates U-Boot's `fit_size`.
+The updater writes the `qspi-linux` partition. It checks the Rev.B model,
+partition name and checksum before muting the targets and writing the image.
+It then reads back the image to verify the write and updates U-Boot's `fit_size`.
 The matching `rtsctl` must already be available at `/tmp/rtsctl` (from a running
 radar image or volatile deployment).
 
@@ -84,12 +84,12 @@ ssh root@192.168.4.1 reboot
 
 Startup initially selects 2380 MHz, 20 MHz bandwidth, RX 0 dB and TX −60 dB.
 It checks the fast profile for ten seconds in each direction; fallback checks
-the normal profile for five seconds per direction. The UI becomes ready after
-setup finishes. On-device diagnostics are `/tmp/radar-startup.log` and
-`/tmp/rtsctl status`. Boot does not restore a browser scene.
+the normal profile for five seconds per direction. Once those checks finish,
+the web controls become available. If setup fails, read `/tmp/radar-startup.log`
+or run `/tmp/rtsctl status` on the Pluto. Scenes are not restored on reboot.
 
 The web controls have no authentication; use the device USB/private lab network.
-Firmware based on a volatile SSH key setup may generate a new host key on reboot.
+Some base images generate a new SSH host key on each reboot.
 Verify device identity over its direct USB connection before replacing a stored
 key; do not disable SSH host verification globally.
 

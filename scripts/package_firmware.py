@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build a persistent radar FIT/FRM from the backed-up Pluto firmware.
-Retains the original kernel and rootfs metadata; replaces the FPGA, disables
-Maia hardware users, and adds a boot-time radar setup service.
+"""Assemble radar firmware using an existing Pluto image.
+Keep the kernel and root filesystem metadata, replace the FPGA, disable Maia
+services that use it, and add the radar startup script.
 """
 import gzip,hashlib,os,shutil,struct,subprocess
 from pathlib import Path

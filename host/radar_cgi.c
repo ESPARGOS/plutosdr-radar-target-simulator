@@ -1,4 +1,4 @@
-/* Pluto-local CGI adapter. The register helper validates and serializes writes. */
+/* HTTP controls for the Pluto web UI. Shares register access with rtsctl. */
 #define main rtsctl_main
 #include "rtsctl.c"
 #undef main
@@ -101,8 +101,8 @@ int main(void){
  if(apply){for(int i=0;i<4;i++){r[16+4*i]=d[i];r[17+4*i]=f[i];r[18+4*i]=g[i];}r[8]=mask;}
  if(mute)r[8]=0;
  if((apply||mute)&&commit()){error(503,"FPGA configuration timed out");return 0;}
- /* Measured RF latency for the qualified two-cycle, 160 MHz / 20 MHz profile.
-    Other profiles deliberately report unknown, rather than a false total range. */
+ /* Measured RF latency with the two-cycle FPGA, 160 MSa/s and 20 MHz bandwidth.
+    For other settings, the hardware latency is unknown. */
  const char *latency=(r[1]==0x00010010 && fabs(fs-160000000)<100 &&
   read_phy_value("in_voltage_rf_bandwidth")==20000000 &&
   read_phy_value("out_voltage_rf_bandwidth")==20000000)?"0.325":"null";

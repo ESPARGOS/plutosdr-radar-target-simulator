@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local hardware control UI. IQ never leaves the FPGA datapath."""
+"""Serve the web preview, or control a Pluto over SSH."""
 import argparse
 import json
 import math

@@ -1,118 +1,127 @@
 # PlutoSDR radar target simulator
 
-Four independently delayed and Doppler-shifted echoes, generated entirely in the
-PlutoSDR FPGA. A web interface runs on the Pluto itself: place targets, drag them
-in range/velocity, and adjust the carrier, RX gain and TX gain. No host computer
-processes or streams the radar samples.
+This project turns a PlutoSDR into a radar target simulator. It receives a signal,
+adds up to four echoes with different delays and Doppler shifts, and transmits
+them back. The signal processing runs in the FPGA; a web interface on the Pluto
+lets you move targets around and adjust their strength.
 
-![Pluto-hosted target editor](docs/assets/web-interface.png)
+![The target editor running on Pluto](docs/assets/web-interface.png)
 
-## What it does
+You can drag targets in range and velocity, enter exact settings in the sidebar,
+or save a scene to use again later. Changes take effect as you drag. The interface
+also controls the carrier frequency and RX/TX gains.
 
-- Four targets with independent delay, signed Doppler, amplitude and On/Off state.
-- Continuous, logarithmic plot zoom; selected slider panels respond to the wheel.
-- Automatic hardware updates, including during dragging; scene import/export.
-- Total monostatic range in metres and radial velocity in m/s, with delay and
-  Doppler shown in the sidebar. The unavailable minimum range is shaded.
-- Local ESPARGOS styling, fonts and favicon; no CDN or laptop web server needed.
-- One firmware image containing the FPGA, Linux system, controls and web UI.
+## Performance
 
-The current FPGA is version `0x00010010`. The qualified lab configuration uses
-**160 MSa/s digital processing with 20 MHz analog RF bandwidth** and measured
-**0.325 µs RF latency**, equivalent to a minimum monostatic range of about **48.7 m**.
-160 MSa/s does **not** mean a 160 MHz reflected RF passband.
+With the current FPGA (`0x00010010`), we measured **0.325 µs of RF latency**,
+which corresponds to a minimum simulated monostatic range of about **48.7 m**.
+The plot includes this delay and shades the region below the minimum range.
 
-| Property | Current lab profile |
+The FPGA processes samples at **160 MSa/s**, while the radio's analog bandwidth
+is **20 MHz**. At a carrier of 2385 MHz, that gives a nominal passband of roughly
+2375–2395 MHz, with gradual roll-off at the edges.
+
+| Setting | Range or resolution |
 | --- | --- |
-| Targets | 4 |
-| Added delay | 0–2047 samples; 0–12.79375 µs |
-| Delay step | 6.25 ns, approximately 0.94 m in monostatic range |
-| Doppler tuning step | approximately 0.03725 Hz |
-| Analog RX/TX bandwidth | 20 MHz |
-| Carrier control | 325–3800 MHz, subject to the installed AD9363 driver |
-| Minimum measured RF latency | 0.325 µs, setup-specific |
+| Targets | Up to 4 |
+| Added delay | 0–2047 samples, or 0–12.79375 µs |
+| Delay step | 6.25 ns, about 0.94 m in monostatic range |
+| Doppler step | About 0.03725 Hz |
+| RX/TX analog bandwidth | 20 MHz |
+| Carrier frequency | 325–3800 MHz with the installed AD9363 driver |
 
-**The 160 MSa/s profile exceeds the AD9363's specified CMOS interface clock range.**
-It was tested on one Rev.B Pluto with Maia firmware. Startup checks RX and TX
-integrity and falls back to a checked 61.44 MSa/s profile on failure. This is an
-experimental instrument, not a calibrated target simulator or a qualification
-of every Pluto. See [validation and limitations](docs/validation.md).
+**160 MSa/s exceeds the AD9363's specified CMOS interface clock range.** We tested
+this configuration on a Rev.B Pluto running Maia firmware. At startup, the radio
+checks both data directions and falls back to 61.44 MSa/s if either check fails.
+The latency and signal-quality measurements, including their limits, are in
+[the measurement notes](docs/validation.md).
 
-## Use it
+## Using the simulator
 
-On a Pluto with the radar firmware installed, open **http://192.168.4.1/**.
+With the radar firmware installed, open **http://192.168.4.1/**.
 
-1. Set the carrier to match the radar. Changing carrier mutes the targets.
-2. Adjust RX/TX gains for the setup; boot defaults are RX 0 dB and TX −60 dB.
-3. Use **+ Add target**. New targets start On. Drag a point or edit its sidebar.
-4. Select the Range and/or Velocity panel to choose which axes the wheel zooms.
-   **Fit targets** reveals the entire scene. Clicking empty plot space does nothing.
-5. Use the joined **On | Off** controls or **Mute all** to disable echoes.
+1. Set the carrier to match your radar. Changing it mutes all targets.
+2. Set the RX and TX gains. The startup defaults are RX 0 dB and TX −60 dB.
+3. Click **+ Add target**, then drag the point or edit its settings. New targets
+   are enabled automatically.
+4. Click the Range or Velocity panel to include that axis in mouse-wheel zoom.
+   You can select both. **Fit targets** brings all targets into view.
+5. Use **On | Off** for an individual target, or **Mute all** to silence them all.
 
-Edits apply automatically. Reboot starts with muted/empty hardware state and
-restores boot radio defaults; export scenes you want to keep. RX gain edits select
-manual gain control. Radio gains are distinct from each target's digital gain.
+There is no Apply button: edits take effect immediately. Use Export to keep a
+scene across reboots, since the simulator starts with no active targets. Setting
+RX gain switches the receiver to manual gain control. Each target also has a
+digital gain, separate from the radio's RX and TX gains.
 
-For a hardware-free preview (Python 3.10+; standard library only):
+To try the interface without hardware, you only need Python 3.10 or later:
 
 ```sh
 make web
 # Open http://127.0.0.1:8080/
 ```
 
-## FPGA datapath
+## How it works
 
-![Four parallel FPGA target paths](docs/assets/fpga-datapath.svg)
+Each path delays the incoming samples, applies a Doppler shift and scales their
+amplitude. The four echoes are then added together and sent to the transmitter.
 
-## Build and install
+![The four FPGA target paths](docs/assets/fpga-datapath.svg)
 
-Start with [the build guide](docs/build.md). FPGA builds use pinned ADI HDL and a
-pinned Maia development container, plus an externally supplied Vivado/Vitis 2023.2
-installation. AMD tools are not included in the container or repository.
+The [architecture guide](docs/architecture.md) describes the arithmetic,
+configuration interface and scene format.
+
+## Building the firmware
+
+You will need Vivado/Vitis 2023.2 and Docker. The build uses a fixed ADI HDL
+revision and Maia development image; you supply the AMD tool installation.
+See [the build guide](docs/build.md) for setup.
 
 ```sh
-make test       # current HDL/control regressions in the build container
-make fpga       # synthesize and route the FPGA
-make tools      # cross-compile native ARM controls
-make firmware   # package using your compatible base firmware
+make test       # run the HDL and control tests
+make fpga       # build the FPGA bitstream
+make tools      # build the ARM control programs
+make firmware   # assemble the firmware image
 ```
 
-The resulting all-in-one update is `build/firmware/pluto.frm`. The packager
-**requires a compatible base FIT image**, retaining its kernel and root filesystem;
-it does not build those components from source. Follow the
-[firmware, backup and recovery guide](docs/firmware.md) before flashing.
-Firmware binaries, device backups, vendor checkouts and raw RF captures are
-excluded from Git. The source tree is not a stock-Pluto universal firmware recipe.
+The result is `build/firmware/pluto.frm`, containing the FPGA, Linux system and
+web interface. Packaging uses the kernel and root filesystem from a compatible
+Pluto/Maia FIT image that you provide. Follow the
+[installation and recovery guide](docs/firmware.md) to back up your device,
+prepare that image and flash the result. Other base firmware versions and Pluto
+revisions still need testing.
+
+Build outputs, firmware backups and raw captures stay in `build/` and are excluded
+from Git.
 
 ## Documentation
 
-- [Build environment and commands](docs/build.md)
-- [Firmware packaging, deployment and recovery](docs/firmware.md)
-- [Architecture, signal processing and HTTP API](docs/architecture.md)
-- [FPGA register interface](docs/registers.md)
-- [Validation results and hardware limitations](docs/validation.md)
-- [Tests and ESPARGOS measurements](docs/testing.md)
-- [Contribution guide](CONTRIBUTING.md)
-- [Third-party components and attribution](THIRD_PARTY.md)
-- [Archived development notebook](docs/development-history.md)
+- [Build setup](docs/build.md)
+- [Installation, backups and recovery](docs/firmware.md)
+- [Signal processing and HTTP API](docs/architecture.md)
+- [FPGA registers](docs/registers.md)
+- [Measurements and limitations](docs/validation.md)
+- [Running tests and ESPARGOS measurements](docs/testing.md)
+- [Contributing](CONTRIBUTING.md)
+- [Third-party licenses](THIRD_PARTY.md)
+- [Development notebook](docs/development-history.md)
 
 ## Source layout
 
-| Directory | Purpose |
+| Directory | Contents |
 | --- | --- |
-| `rtl/` | Current four-target bank, AXI control and CDC constraints |
-| `patches/` | Changes applied to the pinned ADI HDL baseline |
-| `host/` | Native Pluto controls, boot service and optional preview server |
-| `web/` | Device-hosted UI, bundled font and ESPARGOS assets |
-| `scripts/` | Build/deploy tools, RF measurement and diagnostic utilities |
-| `tests/` | HDL, Python, browser and hardware regressions |
-| `config/` | Example scenes and an illustrative lab configuration |
-| `experiments/` | Historical alternatives; not used by the normal build |
-| `docs/` | Current guides and selected validation records |
+| `rtl/` | Target processing, AXI registers and clock-domain constraints |
+| `patches/` | Changes to the ADI HDL |
+| `host/` | Pluto control programs, startup script and preview server |
+| `web/` | Web interface and its assets |
+| `scripts/` | Build tools, deployment scripts and measurement utilities |
+| `tests/` | Simulation, analysis and browser tests |
+| `config/` | Example scenes and lab settings |
+| `experiments/` | Earlier FPGA designs, kept for reference |
+| `docs/` | Guides, diagrams and measurement results |
 
 ## License
 
-Original project code, documentation and the included ESPARGOS assets are
-licensed under **GNU GPL version 3** (`GPL-3.0-only`); see [LICENSE](LICENSE).
-Bundled font data, upstream HDL and firmware components retain their own terms;
-see [third-party notices](THIRD_PARTY.md).
+The project code, documentation and included ESPARGOS assets are licensed under
+**GNU GPL version 3** (`GPL-3.0-only`); see [LICENSE](LICENSE). Fonts, upstream HDL
+and firmware components keep their own licenses, listed in
+[THIRD_PARTY.md](THIRD_PARTY.md).

@@ -1,5 +1,5 @@
-// Independent RX PRBS and TX digital-loopback checks for boot-time qualification.
-// Leaves the RF transmitter attenuated and restores FPGA source/test registers.
+// Check RX with a PRBS pattern and TX through digital loopback at startup.
+// Restore the FPGA test registers afterward and leave TX attenuated.
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdint.h>

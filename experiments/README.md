@@ -1,11 +1,10 @@
-# Historical FPGA experiments
+# Earlier FPGA designs
 
-These alternatives were used while investigating latency and timing. They are
-not selected by `make prepare`, `make fpga` or firmware packaging. Their filenames
-describe candidates, not supported modes. Some failed timing or RF quality checks.
+These are the designs we tried while reducing latency. The normal build uses
+`rtl/` and `patches/`; it does not select anything in this directory. Some of
+these alternatives failed timing or signal-quality tests.
 
-The retained implementation is in `rtl/` plus `patches/`; its qualification is
-summarized in `docs/validation.md`. Candidate-specific test scripts remain in
-`tests/` for research reproducibility. Run them explicitly and keep candidate
-builds separate from the validated vendor tree. Do not load an experimental image
-without checking its own timing report and completing hardware qualification.
+The matching tests are still in `tests/` if you want to revisit an experiment.
+Use a separate build tree, check its timing report, and test it on hardware
+before treating it as a working replacement. Results for the current design
+are in [the measurement notes](../docs/validation.md).

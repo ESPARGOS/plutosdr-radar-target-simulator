@@ -1,7 +1,7 @@
 #!/bin/sh
-# On-Pluto, after radio_setup.sh establishes the normal muted 61.44 MHz profile.
-# Experimental CMOS clock profile: hardware FIRs bypassed; driver FIR cache is 1.
-# No host processing. On failure restore a verified normal, muted radio profile.
+# Run on Pluto after radio_setup.sh has set up 61.44 MSa/s with targets muted.
+# This experimental clock setup bypasses the hardware FIRs, though the driver
+# still reports them enabled. If setup fails, restore and check the normal rate.
 set -eu
 wanted=${1:-160000000}
 case "$wanted" in restore|128000000|136000000|144000000|150000000|160000000) ;; *) echo 'Unsupported fast rate' >&2; exit 2;; esac
@@ -72,12 +72,12 @@ restore_normal() {
   qec_check=$(spi_read 0x16f)
   [ "$(((qec_check >> 5) & 7))" -eq "$((qec_saved * 4))" ] || return 1
  fi
- # Correct clock readbacks alone do not prove that the restored port is clean.
+ # Check actual data as well as the reported clock rates.
  "$checker" 5 || return 1
  rm -f "$recovery"
 }
 if [ "$wanted" = restore ]; then restore_normal; exit $?; fi
-# Repeated startup is allowed only after restoring the saved calibrated chain.
+# Restore the saved clock and filter settings before running setup again.
 if [ -f "$recovery" ]; then restore_normal || exit 2; set -e; fi
 actual=$(cat "$phy/in_voltage_sampling_frequency")
 [ "$actual" -le 61440100 ] || { echo 'Restore the current fast profile first' >&2; exit 2; }

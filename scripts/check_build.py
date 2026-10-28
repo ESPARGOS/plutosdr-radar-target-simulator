@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Do not deploy a bitstream whose final implementation failed timing."""
+"""Check that the bitstream exists and passed the final timing report."""
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 project=root/'vendor/adi-hdl/projects/pluto'

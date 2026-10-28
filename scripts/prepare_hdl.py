@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install our IP into the pinned ADI tree and append Pluto integration once."""
+"""Add the radar core and Pluto wiring to the pinned ADI HDL sources."""
 from pathlib import Path
 import re
 import os
@@ -9,7 +9,7 @@ hdl=root/'vendor/adi-hdl'
 # The extracted vendor tree is not a Git checkout. Do not let git apply
 # discover this project's parent repository and reinterpret patch paths.
 patch_env={**os.environ,'GIT_CEILING_DIRECTORIES':str(hdl.parent)}
-# Apply once; fail loudly if the pinned vendor sources no longer match.
+# Skip patches that are already applied. Stop if the sources do not match.
 for name in ('adi-radar-low-latency.patch','adi-radar-clock-conditioner.patch','adi-radar-loopback-register.patch'):
     patch=root/'patches'/name
     if subprocess.run(['git','apply','--reverse','--check',str(patch)],cwd=hdl,env=patch_env,

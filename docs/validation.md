@@ -1,13 +1,13 @@
-# Validation and limitations
+# Measurements and limitations
 
-The reference hardware is a Rev.B Pluto and ESPARGOS One with antennas separated
-by roughly 5–10 cm. Results include this measurement chain, coupling and its
-noise floor; they are not intrinsic transceiver specifications.
+These measurements used a Rev.B Pluto and an ESPARGOS One, with their antennas
+about 5–10 cm apart. The results include antenna coupling and the ESPARGOS
+receiver's noise floor, so they describe the complete setup.
 
-## Retained configuration
+## Hardware configuration
 
-FPGA `0x00010010`, four targets, two-cycle target bank, multiplier-7 clock
-conditioner and fast TX slew. RX/TX analog bandwidth stays at 20 MHz. The
+The tested FPGA (`0x00010010`) has four targets and a two-cycle target bank.
+It uses a multiplier-7 clock conditioner and the fast TX slew setting. RX/TX analog bandwidth stays at 20 MHz. The
 160 MSa/s profile bypasses selected transceiver digital filtering while retaining
 calibration and using driver-managed slow RX quadrature tracking (M=4).
 
@@ -19,14 +19,14 @@ See [zero-delay](validation/flashed-zero.json) and
 
 Two uninterrupted 600-second PN checks (RX and TX loopback) passed with all four
 paths active, no errors and no clipping. See
-[the long-check record](validation/160m-pn-600s-summary.json). Each normal boot
-also runs native RX and TX checks before exposing ready controls.
+[the long-check record](validation/160m-pn-600s-summary.json). The startup script
+also checks RX and TX before making the controls available.
 
 The latest UI firmware was written, read back in full and rebooted. The
 [manifest](validation/firmware-manifest.json), [startup record](validation/startup.txt)
 and [browser regression](validation/browser-check.txt) identify that image.
-The manifest is a historical release record, not a claim that subsequent source
-cleanup changes have been rebuilt into it.
+Those records describe the flashed image. Later source and documentation edits
+are not included in that image unless it is rebuilt.
 
 ## Signal quality
 
@@ -43,22 +43,21 @@ fast and −53.30 dBc normally, at different native tone frequencies. See
 [RX images](validation/rx-sensitive-images.json) and
 [TX images](validation/tx-sensitive-images.json).
 
-These tests resolved no signal-quality degradation for the retained setup within
-the measurement sensitivity. They do not prove exact equivalence for every
-waveform, temperature, carrier or device. Raw NPZ captures remain in the local
-`build/` archive and are not included in Git. Paths inside JSON records identify
-those original captures, not public downloadable data.
+We found no signal-quality degradation that these tests could resolve. That
+result is limited to the waveforms, device and conditions measured here. The raw
+NPZ captures are kept locally under `build/`; paths in the JSON summaries refer
+to those files, which are not included in the repository.
 
 ## Limits
 
-- 160 MSa/s is outside the AD9363's specified CMOS clock range. This is a
-  qualified lab experiment on one device, not a manufacturer-supported profile.
+- 160 MSa/s is outside the AD9363's specified CMOS clock range. The measurements
+  cover one device; this clock rate is not supported by the manufacturer.
 - Radio fallback is 61.44 MSa/s. It does not inherit the 0.325 µs latency estimate.
 - Do not independently change sample rate/FIR settings in the fast profile:
   the driver FIR cache and actual hardware bypass state differ. On Pluto,
   `radar-radio-fast restore` first returns to the normal muted profile.
-- Four targets are retained. Three eight-target variants fit the FPGA resources
-  but failed timing; none was loaded. Historical details are in the notebook.
+- The design supports four targets. We tried three eight-target variants; all
+  fitted in the FPGA but failed timing, so we did not load them. Historical details are in the notebook.
 - Delay is integer-sample only. No waveform prediction or fractional delay is used.
 - Repeated radar waveforms introduce range ambiguity; slow-time accumulation sets
   the receiver's Doppler ambiguity. Plot zoom does not improve RF resolution.

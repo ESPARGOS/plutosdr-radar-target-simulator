@@ -1,4 +1,4 @@
-// Four parallel delay/Doppler paths. Signed 16-bit IQ; gain and NCO use Q1.15.
+// Four delay/Doppler paths with signed 16-bit IQ and Q1.15 coefficients.
 module target_bank #(parameter N=4, parameter AW=11)(
  input wire clk, reset, configure, restart,
  input wire sample_valid, input wire signed [15:0] sample_i, sample_q,
@@ -15,9 +15,9 @@ module target_bank #(parameter N=4, parameter AW=11)(
  reg [AW-1:0] wr;
  reg [AW:0] filled;
  reg [2:0] valid_pipe;
- // Coefficients depend only on target settings, not incoming RF samples.
- // Build four gain-scaled ROMs after each commit, then read them alongside IQ.
- // This preserves the exact existing Q1.15 arithmetic and 10-bit NCO table.
+ // Precompute the gain-scaled NCO tables when settings change. This keeps
+ // coefficient multiplication out of the sample path while preserving
+ // Q1.15 rounding and the 10-bit phase lookup.
  reg preparing,prepared,active_table,settle,pending_restart;
  reg [N-1:0] active_enabled;
  reg [N*AW-1:0] active_delays;
@@ -43,7 +43,7 @@ module target_bank #(parameter N=4, parameter AW=11)(
        active_delays<=delays;active_increments<=increments;
      end else preparing<=1;
    end else if(activate) begin
-     // Swap complete tables atomically; the previous scene ran throughout reload.
+     // Switch tables together once the reload is complete.
      preparing<=0;prepared<=0;settle<=1;active_table<=~active_table;
      active_enabled<=enabled;active_delays<=delays;active_increments<=increments;
    end else begin
@@ -68,8 +68,8 @@ module target_bank #(parameter N=4, parameter AW=11)(
  reg signed [18:0] pair_pipe_i [0:PAIRS-1],pair_pipe_q [0:PAIRS-1];
  always @(posedge clk) begin
    for(integer j=0;j<PAIRS;j=j+1) begin
-     // Hold the completed output during sample-valid gaps at this existing
-     // register stage; no extra output register or output hold mux is needed.
+     // Keep the last output while sample_valid is low. Holding it here
+     // avoids adding another register to the output path.
      if(reset || flush) begin pair_pipe_i[j]<=0;pair_pipe_q[j]<=0;end
      else if(valid_pipe[1]) begin pair_pipe_i[j]<=pair_i[j];pair_pipe_q[j]<=pair_q[j];end
    end
@@ -115,8 +115,8 @@ module target_bank #(parameter N=4, parameter AW=11)(
    (* ram_style="block" *) reg [31:0] coefficients [0:2047];
    reg [31:0] phase;
    wire [AW-1:0] delay_samples=active_delays[t*AW+:AW];
-   // Prefetch exactly the history location needed by the next clock edge.
-   // This uses only already received samples; delay 0/1 have direct bypasses.
+   // Read the history sample one clock ahead. Delays of 0 or 1 sample
+   // bypass the RAM and use the current or previous input directly.
    reg [AW-1:0] read_pointer,pending_pointer;
    reg configured_valid;
    wire [1:0] initial_advance=2'd1+configured_valid+sample_valid;
@@ -138,8 +138,8 @@ module target_bank #(parameter N=4, parameter AW=11)(
    wire [31:0] next_phase=phase+(sample_valid ? active_increments[t*32+:32] : 32'd0);
    reg [31:0] read_data,last_data,trig;
    reg signed [32:0] prepare_cosine,prepare_sine;
-   // Preserve the explicit CDC capture register, then let the DSP absorb this
-   // local gain register. Gains are stable before the first table entry writes.
+   // Keep a separate register after the CDC capture so Vivado can place it
+   // in the DSP. The gain settles before the first table entry is written.
    reg signed [16:0] prepare_gain;
    always @(posedge clk) prepare_gain<=$signed({1'b0,gains[t*16+:16]});
    wire signed [15:0] data_i=(active_enabled[t] && filled>=delay_samples) ?

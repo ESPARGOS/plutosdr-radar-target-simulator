@@ -1,26 +1,26 @@
 # Contributing
 
-Use the current guides in `docs/`; the development notebook records historical
-experiments and must not be treated as a sequence of current setup instructions.
+The guides in `docs/` describe the current design. The development notebook also
+covers earlier experiments, including designs we tried and dropped.
 
-Keep the real-time datapath in FPGA logic. Changes to delay arithmetic, NCOs,
-clocking or the AD9363 interface require the bit-exact oracle, final Vivado timing
-checks and new hardware qualification. Never deploy a timing-failing experiment.
-Document the sample rate, analog bandwidth, reference measurement and limits of
-any latency/quality claim.
+For software changes, run `make test-local`, `make test-analysis` and the relevant
+browser test. You can use `make test` to run the HDL tests in Docker instead.
+[The testing guide](docs/testing.md) explains the dependencies and hardware tests.
+Save your scene and radio settings before running tests against a Pluto; those
+tests change both. CI runs without hardware.
 
-For software changes, run `make test-local`, `make test-analysis`, and the relevant
-browser check. `make test` uses the container instead of host Icarus. See
-[testing](docs/testing.md) for dependencies and explicit hardware tests. Ordinary
-CI never flashes hardware or transmits RF. Device/browser tests alter scenes and
-radio settings; save the current scene before running them.
+Changes to the sample path need more checking. Run the bit-exact simulation and
+check the final Vivado timing report before trying a new bitstream. Changes to
+clocking or the radio interface also need RF measurements. When reporting latency
+or signal quality, include the sample rate, analog bandwidth and measurement
+setup so others can compare the results.
 
-Do not commit vendor sources, AMD installations, firmware backups, credentials,
-SSH host-key files or raw captures. Put generated artifacts under `build/` and
-scratch files under `RTS_SCRATCH_DIR`. Keep small, clearly attributed validation
-summaries in `docs/validation/`. Firmware binaries belong in release assets, with
-checksums, the corresponding source revision and applicable third-party notices.
+Keep generated files in `build/` and temporary files in `RTS_SCRATCH_DIR`. Vendor
+checkouts, tool installations, firmware backups, credentials and raw captures
+should stay out of Git. Small measurement summaries belong in `docs/validation/`.
+For firmware releases, include a checksum, source revision and the notices and
+source materials required by the bundled components' licenses.
 
-Describe the behavior change, affected FPGA/radio profile and verification in
-pull requests. Historical alternatives live in `experiments/`; adding a candidate
-there does not qualify it for the default build.
+In a pull request, explain what changed, why, and how you tested it. Experimental
+FPGA designs can go in `experiments/` while they are being evaluated; the normal
+build uses `rtl/` and `patches/`.
