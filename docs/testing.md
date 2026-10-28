@@ -8,6 +8,9 @@ python3 -m venv .venv
 python3 -m pip install -r requirements-test.txt
 make test-local       # host Icarus Verilog + pinned ADI source
 make test-analysis    # synthetic analysis/quality estimators
+make test-native      # native controls and CGI failure cases (C compiler)
+make test-ui-model    # scene conversion and request queue (Node.js 18+)
+make test-provenance  # stale source/artifact rejection
 make test-web         # isolated preview server and Chromium
 ```
 
@@ -15,8 +18,14 @@ Or use `make test` for the HDL/control suite in the build container. The bit-exa
 reference model checks 15,000 clocks with random IQ, four independent paths, signed
 Doppler, memory wrap, saturation, sample gaps, configuration, mute and restart.
 AXI tests cover split write channels, strobes, backpressure and atomic CDC.
-There is also a test for the patched ADI interface. Tests for older experimental
-designs are kept separately and can be run individually.
+There is also a test for the patched ADI interface. Abandoned FPGA variants and
+their tests have been removed; Git history retains them.
+
+Native tests use the real control code with an injected register/IIO backend.
+They cover mute with missing radio attributes, busy timeouts, malformed payloads,
+failed or ignored writes, rollback and rollback failure. Browser-model tests
+cover queued edits, stale responses, mute during a write and failed retuning.
+Shared fixtures check the exact scene payload in both Python and JavaScript.
 
 `make test-web` starts and stops its own local preview and headless Chromium,
 uses temporary profiles under `RTS_SCRATCH_DIR` (default `build/scratch`), and
@@ -26,19 +35,22 @@ preview. It does not connect to Pluto or ESPARGOS. Python syntax and shell
 syntax checks also run in `.github/workflows/tests.yml`.
 
 Results from the clean-checkout test are recorded in
-[validation/source-check.md](validation/source-check.md). The GitHub workflow
+[validation/source-check.md](validation/source-check.md). More recent refactor and
+second-device checks are in [software-refactor.md](validation/software-refactor.md). The GitHub workflow
 uses the official [checkout](https://github.com/actions/checkout) and
 [setup-python](https://github.com/actions/setup-python) actions.
 
 ## Testing the Pluto web interface
 
-Install `requirements-hardware.txt` and system libiio. Start an isolated Chromium
-instance with CDP on port 9223 and origin `http://localhost:9223`, then run:
+Install `requirements-hardware.txt`, system libiio and Chromium, then run:
 
 ```sh
-PLUTO_URL=http://192.168.4.1 RADAR_BROWSER_DEBUG_PORT=9223 \
-  python3 tests/device_web_check.py
+python3 scripts/check_web.py --device http://192.168.4.1
 ```
+
+The runner starts and stops an isolated browser, just like the preview test.
+The live test reads the device's sample rate and handles both calibrated total
+range and uncalibrated range offsets.
 
 This test changes the targets, radio gains and carrier frequency. Export the current
 scene and record your radio settings first. It leaves targets muted, restores the
@@ -53,7 +65,8 @@ Screenshots are in `build/device-web-{desktop,mobile}.png`.
 Install a compatible [pyespargos](https://github.com/ESPARGOS/pyespargos) checkout
 and its dependencies. Set `PYESPARGOS_PATH` or pass `--pyespargos`; the default
 looks for `../ESPARGOS/pyespargos` beside this project. Set `ESPARGOS_HOST` or pass
-`--host` for your receiver. `config/lab.example.json` shows an example setup; the scripts do not load it
+`--host` for your receiver. Set `PLUTO_HOST` or pass `--pluto` to select the Pluto in
+measurement, MIMO-demo and sustained PN scripts. `config/lab.example.json` shows an example setup; the scripts do not load it
 automatically.
 
 ```sh

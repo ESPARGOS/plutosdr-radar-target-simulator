@@ -57,12 +57,15 @@ to those files, which are not included in the repository.
   the driver FIR cache and actual hardware bypass state differ. On Pluto,
   `radar-radio-fast restore` first returns to the normal muted profile.
 - The design supports four targets. We tried three eight-target variants; all
-  fitted in the FPGA but failed timing, so we did not load them. Historical details are in the notebook.
+  fitted in the FPGA but failed timing, so we did not load them.
 - Delay is integer-sample only. No waveform prediction or fractional delay is used.
 - Repeated radar waveforms introduce range ambiguity; slow-time accumulation sets
   the receiver's Doppler ambiguity. Plot zoom does not improve RF resolution.
 - Antenna feedback may produce extra echoes or oscillation. The simulator cannot
   synthesize independent angles or calibrated radar cross sections.
 
-See [the archived notebook](development-history.md) for rejected paths and detailed
-measurement context. Earlier profiles in that notebook are not current defaults.
+Earlier experiments and the development notebook remain in Git history. The
+measurements above describe the supported four-target design.
+
+[Software refactor checks](validation/software-refactor.md) cover the native
+controls, browser and volatile testing on a second Pluto.

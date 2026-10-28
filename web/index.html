@@ -1,13 +1,224 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ESPARGOS · Radar Target Simulator</title><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/fonts.css"><link rel="stylesheet" href="/style.css"></head><body>
-<header><a class="brand" href="/" aria-label="Target Studio home"><img src="/logo.svg" alt="ESPARGOS" width="220" height="44"></a><h1>Radar target simulator</h1><span id="connection" class="status">Connecting…</span></header>
-<main>
-<div class="radio-bar"><form id="carrier-form" class="carrier-form" hidden><label for="carrier-input">Carrier</label><div class="input-unit"><input id="carrier-input" type="number" min="325" max="3800" step="0.000001" value="2380" required aria-label="Carrier frequency in MHz"><span>MHz</span></div></form><div id="radio-gains" class="radio-gains" hidden><label>RX gain<div class="input-unit"><input id="rx-gain" type="number" step="1" aria-label="RX gain in dB"><span>dB</span></div></label><label>TX gain<div class="input-unit"><input id="tx-gain" type="number" min="-89.75" max="0" step="0.25" aria-label="TX gain in dB"><span>dB</span></div></label></div><div class="radio-summary"><span id="bandwidth"></span><span id="sample-rate"></span></div></div>
-<div class="workspace"><section class="plot-card"><div class="panel-head"><div><h2>Targets <span id="count">0 / 4</span></h2></div><div class="scene-actions"><button id="import" class="subtle">Import</button><button id="export" class="subtle">Export</button><button id="mute" class="mute">Mute all</button><input id="file" type="file" accept="application/json,.json" hidden></div></div>
-<div class="plot-toolbar"><div class="plot-options"><div class="zoom-control selected" id="range-zoom"><button class="zoom-label" id="range-wheel" type="button" aria-pressed="true" title="Include range in mouse-wheel zoom">Range <output id="range-window-value"></output></button><input id="delay-window" type="range" min="0" max="1" step="any" value="0.5" aria-label="Range window"></div><div class="zoom-control selected" id="velocity-zoom"><button class="zoom-label" id="velocity-wheel" type="button" aria-pressed="true" title="Include velocity in mouse-wheel zoom">Velocity <output id="velocity-window-value"></output></button><input id="doppler-window" type="range" min="0" max="1" step="any" value="0.5" aria-label="Velocity window"></div></div><div class="plot-buttons"><button id="fit" class="subtle" title="Show every target">Fit targets</button><button id="add" class="subtle">+ Add target</button></div></div>
-<div id="plot-wrap" class="plot-wrap"><svg id="plot" viewBox="0 0 900 480" role="img" aria-label="Interactive target range versus radial velocity plot"><defs><pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".7" fill="#344650"/></pattern><pattern id="unavailable-hatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M-2,2 L2,-2 M0,10 L10,0 M8,12 L12,8" stroke="#a8b6bd" stroke-opacity=".35" stroke-width="1.5"/></pattern></defs><rect id="plot-background" x="80" y="25" width="790" height="390" rx="6" fill="url(#dots)"/><g id="unavailable-range"></g><g id="axes"></g><g id="targets"></g><text id="empty" x="475" y="205" text-anchor="middle">Use + Add target</text><text id="velocity-axis-title" x="475" y="466" text-anchor="middle" class="axis-title">Radial velocity (m/s)</text><text transform="translate(12,220) rotate(-90)" text-anchor="middle" id="range-axis-title" class="axis-title">Total range (m)</text></svg></div>
-<div id="target-list"></div></section>
-<aside><section class="inspector"><div class="panel-head"><h2 id="selected-tag">Target</h2></div><div id="no-selection" class="placeholder">Select a target to edit.</div><div id="editor" hidden><div class="power-buttons" role="group" aria-label="Target state"><button id="enabled" class="power-button" type="button" aria-pressed="true">On</button><button id="disabled" class="power-button" type="button" aria-pressed="false">Off</button></div><label>Range <div class="input-unit"><input id="range" type="number" min="0" step="any"><span>m</span></div></label><div class="target-readout"><span id="delay-caption">Total delay</span><strong id="delay-display">—</strong></div><label>Doppler <div class="input-unit"><input id="doppler" type="number" step="0.1"><span>Hz</span></div></label><label>Target gain <div class="gain-heading"><strong id="gain-label">−18 dB</strong></div><input id="gain" type="range" min="-90" max="0" step="0.5"></label><button id="remove" class="delete">Remove target</button></div></section>
-</aside></div>
-<p id="headroom" class="note" hidden></p>
-<div class="action-bar"><div><strong id="change-status">Ready</strong><span id="feedback" role="status" aria-live="polite"></span></div></div>
-</main><script src="/config.js"></script><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ESPARGOS · Radar Target Simulator</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/fonts.css" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/" aria-label="Target Studio home"
+        ><img src="/logo.svg" alt="ESPARGOS" width="220" height="44"
+      /></a>
+      <h1>Radar target simulator</h1>
+      <span id="connection" class="status">Connecting…</span>
+    </header>
+    <main>
+      <div class="radio-bar">
+        <form id="carrier-form" class="carrier-form" hidden>
+          <label for="carrier-input">Carrier</label>
+          <div class="input-unit">
+            <input
+              id="carrier-input"
+              type="number"
+              min="325"
+              max="3800"
+              step="0.000001"
+              value="2380"
+              required
+              aria-label="Carrier frequency in MHz"
+            /><span>MHz</span>
+          </div>
+        </form>
+        <div id="radio-gains" class="radio-gains" hidden>
+          <label
+            >RX gain
+            <div class="input-unit">
+              <input id="rx-gain" type="number" step="1" aria-label="RX gain in dB" /><span
+                >dB</span
+              >
+            </div></label
+          ><label
+            >TX gain
+            <div class="input-unit">
+              <input
+                id="tx-gain"
+                type="number"
+                min="-89.75"
+                max="0"
+                step="0.25"
+                aria-label="TX gain in dB"
+              /><span>dB</span>
+            </div></label
+          >
+        </div>
+        <div class="radio-summary"><span id="bandwidth"></span><span id="sample-rate"></span></div>
+      </div>
+      <div class="workspace">
+        <section class="plot-card">
+          <div class="panel-head">
+            <div>
+              <h2>Targets <span id="count">0 / 4</span></h2>
+            </div>
+            <div class="scene-actions">
+              <button id="import" class="subtle">Import</button
+              ><button id="export" class="subtle">Export</button
+              ><button id="mute" class="mute">Mute all</button
+              ><input id="file" type="file" accept="application/json,.json" hidden />
+            </div>
+          </div>
+          <div class="plot-toolbar">
+            <div class="plot-options">
+              <div class="zoom-control selected" id="range-zoom">
+                <button
+                  class="zoom-label"
+                  id="range-wheel"
+                  type="button"
+                  aria-pressed="true"
+                  title="Include range in mouse-wheel zoom"
+                >
+                  Range <output id="range-window-value"></output></button
+                ><input
+                  id="delay-window"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="any"
+                  value="0.5"
+                  aria-label="Range window"
+                />
+              </div>
+              <div class="zoom-control selected" id="velocity-zoom">
+                <button
+                  class="zoom-label"
+                  id="velocity-wheel"
+                  type="button"
+                  aria-pressed="true"
+                  title="Include velocity in mouse-wheel zoom"
+                >
+                  Velocity <output id="velocity-window-value"></output></button
+                ><input
+                  id="doppler-window"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="any"
+                  value="0.5"
+                  aria-label="Velocity window"
+                />
+              </div>
+            </div>
+            <div class="plot-buttons">
+              <button id="fit" class="subtle" title="Show every target">Fit targets</button
+              ><button id="add" class="subtle">+ Add target</button>
+            </div>
+          </div>
+          <div id="plot-wrap" class="plot-wrap">
+            <svg
+              id="plot"
+              viewBox="0 0 900 480"
+              role="img"
+              aria-label="Interactive target range versus radial velocity plot"
+            >
+              <defs>
+                <pattern id="dots" width="16" height="16" patternUnits="userSpaceOnUse">
+                  <circle cx="1" cy="1" r=".7" fill="#344650" />
+                </pattern>
+                <pattern
+                  id="unavailable-hatch"
+                  width="10"
+                  height="10"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M-2,2 L2,-2 M0,10 L10,0 M8,12 L12,8"
+                    stroke="#a8b6bd"
+                    stroke-opacity=".35"
+                    stroke-width="1.5"
+                  />
+                </pattern>
+              </defs>
+              <rect
+                id="plot-background"
+                x="80"
+                y="25"
+                width="790"
+                height="390"
+                rx="6"
+                fill="url(#dots)"
+              />
+              <g id="unavailable-range"></g>
+              <g id="axes"></g>
+              <g id="targets"></g>
+              <text id="empty" x="475" y="205" text-anchor="middle">Use + Add target</text>
+              <text
+                id="velocity-axis-title"
+                x="475"
+                y="466"
+                text-anchor="middle"
+                class="axis-title"
+              >
+                Radial velocity (m/s)
+              </text>
+              <text
+                transform="translate(12,220) rotate(-90)"
+                text-anchor="middle"
+                id="range-axis-title"
+                class="axis-title"
+              >
+                Total range (m)
+              </text>
+            </svg>
+          </div>
+          <div id="target-list"></div>
+        </section>
+        <aside>
+          <section class="inspector">
+            <div class="panel-head"><h2 id="selected-tag">Target</h2></div>
+            <div id="no-selection" class="placeholder">Select a target to edit.</div>
+            <div id="editor" hidden>
+              <div class="power-buttons" role="group" aria-label="Target state">
+                <button id="enabled" class="power-button" type="button" aria-pressed="true">
+                  On</button
+                ><button id="disabled" class="power-button" type="button" aria-pressed="false">
+                  Off
+                </button>
+              </div>
+              <label
+                >Range
+                <div class="input-unit">
+                  <input id="range" type="number" min="0" step="any" /><span>m</span>
+                </div></label
+              >
+              <div class="target-readout">
+                <span id="delay-caption">Total delay</span><strong id="delay-display">—</strong>
+              </div>
+              <label
+                >Doppler
+                <div class="input-unit">
+                  <input id="doppler" type="number" step="0.1" /><span>Hz</span>
+                </div></label
+              ><label
+                >Target gain
+                <div class="gain-heading"><strong id="gain-label">−18 dB</strong></div>
+                <input id="gain" type="range" min="-90" max="0" step="0.5" /></label
+              ><button id="remove" class="delete">Remove target</button>
+            </div>
+          </section>
+        </aside>
+      </div>
+      <p id="headroom" class="note" hidden></p>
+      <div class="action-bar">
+        <div>
+          <strong id="change-status">Ready</strong
+          ><span id="feedback" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </main>
+    <script src="/config.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

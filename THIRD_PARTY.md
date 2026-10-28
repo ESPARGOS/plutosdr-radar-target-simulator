@@ -10,8 +10,7 @@ licenses or grant rights in AMD tools or unrelated upstream firmware.
 | ESPARGOS logo and favicon | `ESPARGOS/controller-firmware`, `main/web/` | Included under GPL-3.0-only with the owner's authorization |
 | UI visual reference | [ESPARGOS/esp-web-sdr](https://github.com/ESPARGOS/esp-web-sdr), controller UI | ESPARGOS dark/green styling; project UI code is GPL-3.0-only |
 | Carlito font embedded in `web/fonts.css` | Carlito Project Authors / Google Fonts, via ESPARGOS web SDR | SIL Open Font License 1.1; full copyright and license retained at the top of `fonts.css` |
-| ADI HDL | [analogdevicesinc/hdl](https://github.com/analogdevicesinc/hdl), revision `065c8f186ef87ff049d279ed5859ee8d97d91808` | Fetched, not vendored in Git. Per-module notices and upstream LICENSE files govern ADI code; patches retain upstream notices |
-| Historical ADI constraint snapshot | `experiments/fast-interface/system_constr_122m.xdc` | ADIBSD; original copyright header retained, full terms in [LICENSES/ADIBSD.txt](LICENSES/ADIBSD.txt) |
+| ADI HDL | [analogdevicesinc/hdl](https://github.com/analogdevicesinc/hdl), revision `065c8f186ef87ff049d279ed5859ee8d97d91808` | Fetched, not vendored in Git. Per-module notices and upstream LICENSE files govern ADI code; patches retain upstream notices; the ADIBSD text is also in [LICENSES/ADIBSD.txt](LICENSES/ADIBSD.txt) |
 | Maia development container | [maia-sdr/maia-sdr](https://github.com/maia-sdr/maia-sdr) | External build dependency; component licenses remain upstream |
 | Vivado/Vitis 2023.2 | AMD | User-supplied proprietary toolchain; not redistributed |
 | Linux, BusyBox, libraries and device trees in base firmware | User-supplied compatible Pluto/Maia FIT image | Their individual licenses apply; not supplied as source or binary in this repository |

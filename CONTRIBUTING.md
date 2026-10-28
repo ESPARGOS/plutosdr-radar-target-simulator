@@ -1,10 +1,10 @@
 # Contributing
 
-The guides in `docs/` describe the current design. The development notebook also
-covers earlier experiments, including designs we tried and dropped.
+The guides in `docs/` describe the current design. Earlier experiments remain
+in Git history.
 
-For software changes, run `make test-local`, `make test-analysis` and the relevant
-browser test. You can use `make test` to run the HDL tests in Docker instead.
+For software changes, run `make test-native test-ui-model test-provenance`,
+`make test-local test-analysis` and the relevant browser test. You can use `make test` to run the HDL tests in Docker instead.
 [The testing guide](docs/testing.md) explains the dependencies and hardware tests.
 Save your scene and radio settings before running tests against a Pluto; those
 tests change both. CI runs without hardware.
@@ -21,6 +21,10 @@ should stay out of Git. Small measurement summaries belong in `docs/validation/`
 For firmware releases, include a checksum, source revision and the notices and
 source materials required by the bundled components' licenses.
 
-In a pull request, explain what changed, why, and how you tested it. Experimental
-FPGA designs can go in `experiments/` while they are being evaluated; the normal
-build uses `rtl/` and `patches/`.
+Use `.clang-format` for C and Black for Python. The web source uses Prettier;
+`npm install` followed by `npm run format:web` runs the pinned development tool.
+The UI itself has no npm runtime dependency or build step. Keep tests focused on
+observable behavior and remove abandoned experiments once their conclusions are
+recorded.
+
+In a pull request, explain what changed, why, and how you tested it.

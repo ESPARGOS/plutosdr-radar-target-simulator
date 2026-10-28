@@ -1,46 +1,84 @@
 #!/usr/bin/env python3
 """Add the radar core and Pluto wiring to the pinned ADI HDL sources."""
+
 from pathlib import Path
 import re
 import os
 import subprocess
-root=Path(__file__).resolve().parents[1]
-hdl=root/'vendor/adi-hdl'
+
+root = Path(__file__).resolve().parents[1]
+hdl = root / "vendor/adi-hdl"
 # The extracted vendor tree is not a Git checkout. Do not let git apply
 # discover this project's parent repository and reinterpret patch paths.
-patch_env={**os.environ,'GIT_CEILING_DIRECTORIES':str(hdl.parent)}
+patch_env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(hdl.parent)}
 # Skip patches that are already applied. Stop if the sources do not match.
-for name in ('adi-radar-low-latency.patch','adi-radar-clock-conditioner.patch','adi-radar-loopback-register.patch'):
-    patch=root/'patches'/name
-    if subprocess.run(['git','apply','--reverse','--check',str(patch)],cwd=hdl,env=patch_env,
-                      stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode:
-        subprocess.run(['git','apply',str(patch)],cwd=hdl,env=patch_env,check=True)
-ip=hdl/'library/radar_axi'
+for name in (
+    "adi-radar-low-latency.patch",
+    "adi-radar-clock-conditioner.patch",
+    "adi-radar-loopback-register.patch",
+):
+    patch = root / "patches" / name
+    if subprocess.run(
+        ["git", "apply", "--reverse", "--check", str(patch)],
+        cwd=hdl,
+        env=patch_env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode:
+        subprocess.run(["git", "apply", str(patch)], cwd=hdl, env=patch_env, check=True)
+ip = hdl / "library/radar_axi"
 ip.mkdir(exist_ok=True)
+
+
 def write_if_changed(path, text):
-    if not path.exists() or path.read_text()!=text:
+    if not path.exists() or path.read_text() != text:
         path.write_text(text)
-for f in (root/'rtl').iterdir():
-    write_if_changed(ip/f.name,f.read_text())
-write_if_changed(ip/'Makefile','LIBRARY_NAME := radar_axi\nGENERIC_DEPS += radar_axi.sv target_bank.sv nco_rom.v\nXILINX_DEPS += radar_axi_ip.tcl radar_cdc.xdc\ninclude ../scripts/library.mk\n')
-write_if_changed(ip/'radar_axi_ip.tcl','''source ../../scripts/adi_env.tcl
+
+
+for f in (root / "rtl").iterdir():
+    write_if_changed(ip / f.name, f.read_text())
+write_if_changed(
+    ip / "Makefile",
+    "LIBRARY_NAME := radar_axi\nGENERIC_DEPS += radar_axi.sv target_bank.sv nco_rom.v\nXILINX_DEPS += radar_axi_ip.tcl radar_cdc.xdc\ninclude ../scripts/library.mk\n",
+)
+write_if_changed(
+    ip / "radar_axi_ip.tcl",
+    """source ../../scripts/adi_env.tcl
 source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
 adi_ip_create radar_axi
 adi_ip_files radar_axi [list radar_axi.sv target_bank.sv nco_rom.v radar_cdc.xdc]
 adi_ip_properties radar_axi
 ipx::save_core [ipx::current_core]
-''')
-p=hdl/'projects/pluto/Makefile'
-s=p.read_text()
-if 'LIB_DEPS += radar_axi' not in s:
-    s=s.replace('LIB_DEPS += axi_ad9361','LIB_DEPS += radar_axi\nLIB_DEPS += axi_ad9361')
-    write_if_changed(p,s)
-p=hdl/'projects/pluto/system_bd.tcl'
-s=p.read_text().split('# RADAR TARGET SIMULATOR')[0]
+""",
+)
+p = hdl / "projects/pluto/Makefile"
+s = p.read_text()
+if "LIB_DEPS += radar_axi" not in s:
+    s = s.replace(
+        "LIB_DEPS += axi_ad9361", "LIB_DEPS += radar_axi\nLIB_DEPS += axi_ad9361"
+    )
+    write_if_changed(p, s)
+p = hdl / "projects/pluto/system_bd.tcl"
+s = p.read_text().split("# RADAR TARGET SIMULATOR")[0]
 # The simulator runs at the RF sample rate. Host-side optional filters are unused.
-s=re.sub(r'ad_add_(?:interpolation|decimation)_filter[^\n]*\\\n[^\n]*\n','',s)
-s='\n'.join(line for line in s.splitlines() if not any(x in line for x in ('rx_fir_decimator','tx_fir_interpolator','decim_slice','interp_slice')))+'\n'
-s+='''# RADAR TARGET SIMULATOR
+s = re.sub(r"ad_add_(?:interpolation|decimation)_filter[^\n]*\\\n[^\n]*\n", "", s)
+s = (
+    "\n".join(
+        line
+        for line in s.splitlines()
+        if not any(
+            x in line
+            for x in (
+                "rx_fir_decimator",
+                "tx_fir_interpolator",
+                "decim_slice",
+                "interp_slice",
+            )
+        )
+    )
+    + "\n"
+)
+s += """# RADAR TARGET SIMULATOR
 # Compile-time bypass removes pipeline registers, unlike runtime correction disable.
 # The RF transceiver retains its own calibrated DC and IQ corrections.
 # clk and l_clk are the same net on Pluto; this bypass is not a generic CDC.
@@ -76,5 +114,5 @@ foreach chan {i0 q0} output {dac_i dac_q} {
   ad_connect radar_targets/$output axi_ad9361/dac_data_$chan
 }
 ad_cpu_interconnect 0x43c00000 radar_targets
-'''
-write_if_changed(p,s)
+"""
+write_if_changed(p, s)

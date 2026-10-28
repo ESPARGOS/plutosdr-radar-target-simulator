@@ -103,7 +103,6 @@ from Git.
 - [Running tests and ESPARGOS measurements](docs/testing.md)
 - [Contributing](CONTRIBUTING.md)
 - [Third-party licenses](THIRD_PARTY.md)
-- [Development notebook](docs/development-history.md)
 
 ## Source layout
 
@@ -116,7 +115,6 @@ from Git.
 | `scripts/` | Build tools, deployment scripts and measurement utilities |
 | `tests/` | Simulation, analysis and browser tests |
 | `config/` | Example scenes and lab settings |
-| `experiments/` | Earlier FPGA designs, kept for reference |
 | `docs/` | Guides, diagrams and measurement results |
 
 ## License

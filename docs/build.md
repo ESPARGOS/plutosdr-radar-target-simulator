@@ -56,12 +56,23 @@ Outputs:
 - `vendor/adi-hdl/projects/pluto/pluto.runs/impl_1/system_top.bit`
 - `vendor/adi-hdl/projects/pluto/timing_impl.log`
 - `build/rtsctl`, `build/radar.cgi`, `build/radio-pn`
+- `build/fpga-manifest.json`, `build/tools-manifest.json`
 
-`python3 scripts/check_build.py` checks the final Vivado timing report before
-packaging or deployment. A passing report still needs to be followed by tests
-on the radio, particularly after clock or interface changes. `make firmware`
-assembles the tools and bitstream with the base image described in
-[firmware.md](firmware.md); flashing is a separate step.
+`make fpga` records the exact input files, toolchain, bitstream and passing timing
+report in `build/fpga-manifest.json`. It reuses an existing build only when all
+those hashes still match. Otherwise it performs a clean implementation; an old
+bitstream cannot be assigned a new manifest after the fact.
+
+`python3 scripts/check_build.py` verifies that record before packaging or
+deployment. Changing an RTL file, integration patch, prepared ADI source,
+bitstream or timing report makes the check fail. `make tools` similarly records
+the native sources, compiler and output binaries. `make firmware` rebuilds the
+tools, verifies both manifests, and writes `build/firmware/firmware-manifest.json`
+with the base image, startup scripts, web assets and final firmware hashes.
+
+A passing build still needs radio tests, particularly after clock or interface
+changes. Packaging uses the base image described in [firmware.md](firmware.md);
+flashing is a separate step.
 
 For tests without Vivado/Docker, install Icarus Verilog, prepare the vendor tree,
 and run `make test-local`. Analysis tests additionally use

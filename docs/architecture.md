@@ -56,9 +56,38 @@ register writes. Setting RX gain selects manual gain control. Gain changes leave
 the targets, sample clock and filters alone. The driver reports the available
 gain range, which can depend on the carrier. The API has no authentication.
 
-The optional Python preview server has a separate JSON API under `/api/`.
-Use the Pluto-hosted interface for the full set of radio controls. The
+Mute only needs the FPGA register map. It still works when the sample clock,
+carrier or gain attributes cannot be read. In that case the response confirms
+`muted: true`, returns `null` for unavailable values and includes a warning.
+Carrier changes leave targets muted on both success and failure. Failed gain or
+carrier writes attempt to restore the previous settings and verify the result.
+
+The Python preview uses the same scene payload under `/api/`; only the endpoint
+prefix differs. It does not expose carrier or radio-gain controls. The
 [register reference](registers.md) describes direct FPGA access.
+
+## Software layout
+
+`host/radar_control.c` implements scene validation, register commits, gain
+changes and tuning. Both the command-line program and CGI link it normally.
+Its small I/O interface separates those operations from Linux: `radar_linux.c`
+provides the memory mapping, shared lock and IIO attributes, while the tests
+supply an in-memory backend that can fail individual reads and writes.
+
+The browser uses native JavaScript modules, without a bundler:
+
+- `scene.js` validates scenes and converts physical units to register values.
+- `api.js` handles HTTP requests, errors and timeouts.
+- `controller.js` owns the scene and serializes all device requests. It combines
+  rapid edits, ignores stale scene readbacks and cancels unsent edits before mute
+  or retuning, so an old update cannot switch targets back on.
+- `plot.js` handles plotting, dragging and zoom. `app.js` connects the controls
+  to the scene controller; `dom.js` contains the small DOM helpers.
+
+`host/server.py` serves the hardware-free preview. `host/control.py` provides
+its in-memory state and the SSH adapter used by measurement scripts.
+`host/scene.py` shares the Python conversion rules. Golden payload fixtures
+check that Python and JavaScript agree, including negative and half-step rounding.
 
 ## Scene files
 

@@ -8,8 +8,9 @@ three revision-specific device trees. It stops the Maia services that use the FP
 the radar bitstream, control programs, startup script and web interface.
 
 You need a compatible base image at `build/firmware/original.itb`; the build
-reuses its Linux kernel and root filesystem. Other kernels, factory firmware
-and other Pluto revisions still need testing. The driver must provide the
+reuses its Linux kernel and root filesystem. A second Rev.B device running a DICHASUS image has also been tested by loading
+the FPGA and UI into RAM; this does not qualify that image as a packaging base.
+Other kernels, factory firmware and other Pluto revisions still need testing. The driver must provide the
 AD9361 IIO/debug attributes used by `radio_fast_setup.sh`, including
 `adi,qec-tracking-slow-mode-enable`, and the retained reserved-memory layout.
 
@@ -48,7 +49,8 @@ sha256sum build/firmware/pluto.frm
 ```
 
 `make firmware` runs `scripts/package_firmware.py`, which requires passing final
-FPGA timing. Outputs are `pluto.frm`, `pluto.frm.sha256`, `radar.itb`, `radar.bit`
+FPGA provenance and timing, plus matching native tools. It also records all
+package inputs in `firmware-manifest.json`. Outputs are `pluto.frm`, `pluto.frm.sha256`, `radar.itb`, `radar.bit`
 and the intermediate rootfs/DTB files under `build/firmware/`.
 The `.frm` is the complete application firmware update, not a bootloader image.
 Device-tree hashes are deliberately omitted: Pluto U-Boot patches the DTBs
@@ -65,6 +67,10 @@ This loads FPGA RAM and configures the radio without changing flash. It stops
 Maia services, temporarily rebinds radio drivers, preserves the USB gadget and
 leaves targets muted. Reboot restores the installed image. This command copies
 the FPGA and radio tools; use the firmware image to install the web interface.
+Stop any other application that owns the radio before deployment. In particular,
+DICHASUS may run `maia-reftx` from its startup script; that script does not support
+a `stop` argument. The loader handles Maia services but does not stop arbitrary
+third-party applications for you.
 
 ## Writing the firmware to flash
 

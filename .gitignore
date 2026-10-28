@@ -22,3 +22,4 @@ __pycache__/
 !.env.example
 /config/lab.local.json
 .DS_Store
+node_modules/
