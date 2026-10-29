@@ -58,7 +58,7 @@ static int regwrite(unsigned reg, unsigned value) {
 /* Sweep actual clock/data pairs. The driver's short scan can miss a valid
  * pair at high CMOS rates. Select a passing point farthest from failing taps,
  * then let the normal sustained PN test qualify it without clearing errors. */
-static int tune_port(volatile uint32_t *rx, unsigned port, unsigned seconds) {
+static int tune_port(volatile uint32_t *rx, unsigned port, unsigned seconds, unsigned candidates) {
     unsigned char good[16][16] = {{0}};
     for (unsigned clock = 0; clock < 16; ++clock) {
         if (attr(phy, "ensm_mode", "alert") || regwrite(port, clock << 4) ||
@@ -81,7 +81,7 @@ static int tune_port(volatile uint32_t *rx, unsigned port, unsigned seconds) {
     }
     /* Prefer delaying RX data to moving DATA_CLK and relocking the MMCM.
        Fall back to the full grid if no data-only point passes qualification. */
-    for (unsigned attempt = 0; attempt < 256 && !interrupted; ++attempt) {
+    for (unsigned attempt = 0; attempt < candidates && !interrupted; ++attempt) {
         bool data_only = false;
         if (port == 6)
             for (unsigned data = 0; data < 16; ++data)
@@ -143,7 +143,8 @@ static int tune_port(volatile uint32_t *rx, unsigned port, unsigned seconds) {
 }
 /* Keep data and frame delay coherent. Select the middle of the common RX
  * eye, then independently qualify TX loopback with this receive setting. */
-static int tune_rx_inputs(volatile uint32_t *rx) {
+static int tune_rx_inputs(volatile uint32_t *rx, uint32_t *candidates) {
+    uint32_t good_taps = 0;
     unsigned best_start = 0, best_width = 0, start = 0, width = 0;
     for (unsigned tap = 0; tap < 32 && !interrupted; ++tap) {
         for (unsigned lane = 0; lane < 13; ++lane)
@@ -154,6 +155,7 @@ static int tune_rx_inputs(volatile uint32_t *rx) {
         usleep(50000);
         bool good = !((rx[0x404 / 4] | rx[0x444 / 4]) & 6) && (rx[0x5c / 4] & 1);
         if (good) {
+            good_taps |= 1u << tap;
             if (!width)
                 start = tap;
             ++width;
@@ -168,11 +170,51 @@ static int tune_rx_inputs(volatile uint32_t *rx) {
         fprintf(stderr, "RX inputs have insufficient common timing margin (%u taps)\n", best_width);
         return -1;
     }
+    *candidates = good_taps & ((good_taps << 1) | (good_taps >> 1));
     unsigned selected = best_start + (best_width - 1) / 2;
     for (unsigned lane = 0; lane < 13; ++lane)
         rx[(0x800 + lane * 4) / 4] = selected;
     usleep(100000);
     printf("RX inputs: %u clean taps from %u, selected %u\n", best_width, best_start, selected);
+    fflush(stdout);
+    return (int)selected;
+}
+
+/* RX BIST and TX loopback need not have the same input eye. Center their
+ * measured intersection rather than accepting the first passing RX tap. */
+static int center_joint_inputs(volatile uint32_t *rx, uint32_t candidates) {
+    unsigned best_start = 0, best_width = 0, start = 0, width = 0;
+    for (unsigned tap = 0; tap < 32 && !interrupted; ++tap) {
+        bool good = false;
+        if (candidates & (1u << tap)) {
+            for (unsigned lane = 0; lane < 13; ++lane)
+                rx[(0x800 + lane * 4) / 4] = tap;
+            usleep(100000);
+            rx[0x404 / 4] = 7;
+            rx[0x444 / 4] = 7;
+            usleep(1000000);
+            good = !((rx[0x404 / 4] | rx[0x444 / 4]) & 6) && (rx[0x5c / 4] & 1);
+            printf("Joint input tap %u: %s\n", tap, good ? "passed" : "rejected");
+        }
+        if (good) {
+            if (!width)
+                start = tap;
+            ++width;
+            if (width > best_width) {
+                best_start = start;
+                best_width = width;
+            }
+        } else
+            width = 0;
+    }
+    if (interrupted || !best_width)
+        return -1;
+    unsigned selected = best_start + (best_width - 1) / 2;
+    for (unsigned lane = 0; lane < 13; ++lane)
+        rx[(0x800 + lane * 4) / 4] = selected;
+    usleep(100000);
+    printf("Joint RX/TX input eye: %u taps from %u, selected %u\n", best_width, best_start,
+           selected);
     fflush(stdout);
     return 0;
 }
@@ -249,76 +291,151 @@ int main(int argc, char **argv) {
         }
     }
     int failed = 0;
-    for (int mode = 0; mode < 2 && !failed; mode++) {
-        if (attr(debug, "bist_prbs", "0") || attr(debug, "loopback", mode ? "1" : "0")) {
-            failed = 1;
-            break;
-        }
-        rx[0x40 / 4] = 2;
-        rx[0x40 / 4] = 3;
-        tx[0x40 / 4] = 3;
-        for (int ch = 0; ch < 2; ch++) {
-            rx[(0x400 + 64 * ch) / 4] = 0x251;
-            rx[(0x418 + 64 * ch) / 4] = mode ? 9 << 16 : 0;
-            if (mode) {
-                tx[(0x418 + 64 * ch) / 4] = 9;
-                tx[(0x414 + 64 * ch) / 4] = 0;
-            }
-        }
-        tx[0x44 / 4] = 1;
-        if ((!mode && attr(debug, "bist_prbs", "2")) || attr(phy, "ensm_mode", "alert") ||
-            attr(phy, "ensm_mode", "fdd")) {
-            failed = 1;
-            break;
-        }
-        usleep(100000);
-        if (tune && (tune_port(rx, mode ? 7 : 6, seconds) || (!mode && tune_rx_inputs(rx)))) {
-            failed = 1;
-            break;
-        }
-        if (mode) {
-            int selected = regread(7);
-            if (selected < 0) {
+    uint32_t all_inputs = 0, remaining_inputs = 0;
+    int preferred_input = 0;
+    bool exhaustive = false;
+    for (unsigned combination = 0; combination < 64; ++combination) {
+        failed = 0;
+        for (int stage = 0; stage < (tune ? 3 : 2) && !failed; stage++) {
+            int mode = stage == 1;
+            if (attr(debug, "bist_prbs", "0") || attr(debug, "loopback", mode ? "1" : "0")) {
                 failed = 1;
                 break;
             }
-            for (int attempt = 0; attempt < 5; attempt++) {
-                rx[0x404 / 4] = 7;
-                rx[0x444 / 4] = 7;
-                usleep(50000);
-                printf("TX acquisition %d: status %u %u\n", attempt + 1, rx[0x404 / 4],
-                       rx[0x444 / 4]);
-                if (!((rx[0x404 / 4] | rx[0x444 / 4]) & 6))
-                    break;
-                if (attempt < 4) {
-                    if (regwrite(7, selected ? 0 : 0xf0)) {
-                        failed = 1;
-                        break;
-                    }
-                    usleep(10000);
-                    if (regwrite(7, (unsigned)selected)) {
-                        failed = 1;
-                        break;
-                    }
-                    usleep(50000);
+            rx[0x40 / 4] = 2;
+            rx[0x40 / 4] = 3;
+            tx[0x40 / 4] = 3;
+            for (int ch = 0; ch < 2; ch++) {
+                rx[(0x400 + 64 * ch) / 4] = 0x251;
+                rx[(0x418 + 64 * ch) / 4] = mode ? 9 << 16 : 0;
+                if (mode) {
+                    tx[(0x418 + 64 * ch) / 4] = 9;
+                    tx[(0x414 + 64 * ch) / 4] = 0;
                 }
             }
-        }
-        if (failed)
-            break;
-        // Sticky checker errors are cleared once, never during the measured interval.
-        rx[0x404 / 4] = 7;
-        rx[0x444 / 4] = 7;
-        for (unsigned i = 0; i < seconds * 10 && !interrupted; i++)
+            tx[0x44 / 4] = 1;
+            if ((!mode && attr(debug, "bist_prbs", "2")) || attr(phy, "ensm_mode", "alert") ||
+                attr(phy, "ensm_mode", "fdd")) {
+                failed = 1;
+                break;
+            }
             usleep(100000);
-        if (interrupted) {
-            failed = 1;
-            break;
+            if (tune && stage == 0 && !combination) {
+                if (tune_port(rx, 6, seconds, 256)) {
+                    failed = 1;
+                    break;
+                }
+                int selected = tune_rx_inputs(rx, &all_inputs);
+                if (selected < 0) {
+                    failed = 1;
+                    break;
+                }
+                preferred_input = selected;
+                remaining_inputs = all_inputs & ~(1u << selected);
+            }
+            if (tune && mode && tune_port(rx, 7, seconds, exhaustive ? 256 : 4)) {
+                failed = 1;
+                break;
+            }
+            if (tune && mode && center_joint_inputs(rx, all_inputs)) {
+                failed = 1;
+                break;
+            }
+            if (mode) {
+                int selected = regread(7);
+                if (selected < 0) {
+                    failed = 1;
+                    break;
+                }
+                for (int attempt = 0; attempt < 5; attempt++) {
+                    rx[0x404 / 4] = 7;
+                    rx[0x444 / 4] = 7;
+                    usleep(50000);
+                    printf("TX acquisition %d: status %u %u\n", attempt + 1, rx[0x404 / 4],
+                           rx[0x444 / 4]);
+                    if (!((rx[0x404 / 4] | rx[0x444 / 4]) & 6))
+                        break;
+                    if (attempt < 4) {
+                        if (regwrite(7, selected ? 0 : 0xf0)) {
+                            failed = 1;
+                            break;
+                        }
+                        usleep(10000);
+                        if (regwrite(7, (unsigned)selected)) {
+                            failed = 1;
+                            break;
+                        }
+                        usleep(50000);
+                    }
+                }
+            }
+            if (failed)
+                break;
+            // Sticky checker errors are cleared once, never during the measured interval.
+            rx[0x404 / 4] = 7;
+            rx[0x444 / 4] = 7;
+            unsigned verification = tune && mode ? 60 : seconds;
+            bool live_updates = tune && mode;
+            unsigned ticks_per_second = live_updates ? 100 : 10;
+            radar_scene exercise;
+            if (live_updates) {
+                radar_get_scene(&radar, &exercise);
+                puts("TX check exercises live four-target delay, Doppler and gain updates");
+                fflush(stdout);
+            }
+            for (unsigned i = 0; i < verification * ticks_per_second && !interrupted; i++) {
+                usleep(1000000 / ticks_per_second);
+                if (live_updates) {
+                    for (unsigned target = 0; target < RADAR_TARGETS; ++target) {
+                        exercise.targets[target].delay = (i * (target + 1) * 17) & RADAR_MAX_DELAY;
+                        exercise.targets[target].gain = 4096 + ((i + target * 37) & 1023);
+                        if (!(i % 17))
+                            exercise.targets[target].phase = 0u - exercise.targets[target].phase;
+                    }
+                    if (radar_apply(&radar, &exercise)) {
+                        failed = 1;
+                        break;
+                    }
+                }
+            }
+            if (interrupted || failed) {
+                failed = 1;
+                break;
+            }
+            uint32_t a = rx[0x404 / 4], b = rx[0x444 / 4], global = rx[0x5c / 4];
+            printf("%s: status %u %u, global %u, %u seconds\n",
+                   mode         ? "TX loopback"
+                   : stage == 2 ? "RX PN recheck"
+                                : "RX PN",
+                   a, b, global, verification);
+            failed |= ((a | b) & 6) != 0 || !(global & 1);
         }
-        uint32_t a = rx[0x404 / 4], b = rx[0x444 / 4], global = rx[0x5c / 4];
-        printf("%s: status %u %u, global %u, %u seconds\n", mode ? "TX loopback" : "RX PN", a, b,
-               global, seconds);
-        failed |= ((a | b) & 6) != 0 || !(global & 1);
+        if (!failed || !tune || interrupted)
+            break;
+        /* RX alone cannot qualify an input tap for TX loopback. Try the other
+         * measured RX-eye taps, checking both directions for every combination.
+         * Prioritize a few interior TX candidates per input; if none works, search
+         * every TX candidate before declaring failure. No device-specific tap. */
+        if (!remaining_inputs && !exhaustive && all_inputs) {
+            remaining_inputs = all_inputs;
+            exhaustive = true;
+        }
+        if (!remaining_inputs)
+            break;
+        int next = -1, distance = 33;
+        for (int tap = 0; tap < 32; ++tap) {
+            if ((remaining_inputs & (1u << tap)) && abs(tap - preferred_input) < distance) {
+                next = tap;
+                distance = abs(tap - preferred_input);
+            }
+        }
+        remaining_inputs &= ~(1u << next);
+        for (unsigned lane = 0; lane < 13; ++lane)
+            rx[(0x800 + lane * 4) / 4] = (unsigned)next;
+        usleep(100000);
+        printf("Retrying RX and TX with common input tap %d%s\n", next,
+               exhaustive ? " (full TX search)" : "");
+        fflush(stdout);
     }
     if (failed && tune) {
         for (unsigned lane = 0; lane < 13; ++lane)
