@@ -72,15 +72,9 @@
           </div>
           <div class="plot-toolbar">
             <div class="plot-options">
-              <div class="zoom-control selected" id="range-zoom">
-                <button
-                  class="zoom-label"
-                  id="range-wheel"
-                  type="button"
-                  aria-pressed="true"
-                  title="Include range in mouse-wheel zoom"
-                >
-                  Range <output id="range-window-value"></output></button
+              <div class="zoom-control" id="range-zoom" title="Scroll here to zoom range">
+                <label class="zoom-label" for="delay-window">
+                  Range <output id="range-window-value"></output></label
                 ><input
                   id="delay-window"
                   type="range"
@@ -91,15 +85,9 @@
                   aria-label="Range window"
                 />
               </div>
-              <div class="zoom-control selected" id="velocity-zoom">
-                <button
-                  class="zoom-label"
-                  id="velocity-wheel"
-                  type="button"
-                  aria-pressed="true"
-                  title="Include velocity in mouse-wheel zoom"
-                >
-                  Velocity <output id="velocity-window-value"></output></button
+              <div class="zoom-control" id="velocity-zoom" title="Scroll here to zoom velocity">
+                <label class="zoom-label" for="doppler-window">
+                  Velocity <output id="velocity-window-value"></output></label
                 ><input
                   id="doppler-window"
                   type="range"

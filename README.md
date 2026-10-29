@@ -47,8 +47,9 @@ With the radar firmware installed, open **http://192.168.4.1/**.
 2. Set the RX and TX gains. The startup defaults are RX 0 dB and TX −60 dB.
 3. Click **+ Add target**, then drag the point or edit its settings. New targets
    are enabled automatically.
-4. Click the Range or Velocity panel to include that axis in mouse-wheel zoom.
-   You can select both. **Fit targets** brings all targets into view.
+4. Scroll over the Range or Velocity control to zoom that axis. Scrolling over
+   the plot does not change either axis.
+   **Fit targets** brings all targets into view.
 5. Use **On | Off** for an individual target, or **Mute all** to silence them all.
 
 There is no Apply button: edits take effect immediately. Use Export to keep a

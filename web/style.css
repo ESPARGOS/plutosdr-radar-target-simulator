@@ -601,19 +601,12 @@ input[type="range"] {
   margin: 6px 0 0;
   height: 20px;
 }
-.plot-options .wheel-control {
-  align-self: center;
-}
 @media (max-width: 680px) {
   .plot-options {
     width: 100%;
   }
   .plot-options .zoom-control {
     width: 100%;
-  }
-  .plot-options .wheel-control {
-    width: 100%;
-    justify-content: space-between;
   }
 }
 
@@ -670,9 +663,9 @@ input[type="range"] {
   border-radius: 7px;
   padding: 8px 12px;
   width: 220px;
-  cursor: pointer;
 }
-.plot-options .zoom-control.selected {
+.plot-options .zoom-control:hover,
+.plot-options .zoom-control:focus-within {
   border-color: var(--accent);
   background: #183b29;
 }
@@ -686,9 +679,6 @@ input[type="range"] {
   gap: 12px;
   width: 100%;
   color: inherit;
-}
-.zoom-label:hover {
-  background: transparent;
 }
 .zoom-label output {
   pointer-events: none;

@@ -5,7 +5,6 @@ export class TargetPlot {
   constructor(controller) {
     this.controller = controller;
     this.drag = null;
-    this.wheelAxes = { range: true, velocity: true };
     this.rangeMaximum = 1500;
     this.velocityMaximum = 10;
     for (const axis of ["range", "velocity"]) {
@@ -15,14 +14,10 @@ export class TargetPlot {
         this.setWindow(axis, low * (high / low) ** Number(input.value));
         this.draw();
       };
-      $(axis + "-zoom").onclick = (event) => {
-        if (event.target.tagName === "INPUT") return;
-        this.wheelAxes[axis] = !this.wheelAxes[axis];
-        $(axis + "-wheel").setAttribute("aria-pressed", String(this.wheelAxes[axis]));
-        $(axis + "-zoom").classList.toggle("selected", this.wheelAxes[axis]);
-      };
+      $(axis + "-zoom").addEventListener("wheel", (event) => this.zoom(event, axis), {
+        passive: false,
+      });
     }
-    $("plot").addEventListener("wheel", (event) => this.zoom(event), { passive: false });
     $("plot").addEventListener("pointermove", (event) => this.move(event));
     for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
       $("plot").addEventListener(event, (event) => this.endDrag(event));
@@ -187,14 +182,13 @@ export class TargetPlot {
       $("plot").releasePointerCapture(event.pointerId);
     this.controller.endDrag();
   }
-  zoom(event) {
-    if ((!this.wheelAxes.range && !this.wheelAxes.velocity) || this.drag) return;
+  zoom(event, axis) {
+    if (this.drag) return;
     event.preventDefault();
     const delta =
       event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? this.geometry().h : 1);
     const factor = Math.exp(Math.max(-0.5, Math.min(0.5, delta * 0.002)));
-    for (const axis of ["range", "velocity"])
-      if (this.wheelAxes[axis]) this.setWindow(axis, this.windowValue(axis) * factor);
+    this.setWindow(axis, this.windowValue(axis) * factor);
     this.draw();
   }
   draw() {

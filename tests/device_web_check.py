@@ -203,27 +203,29 @@ try:
         abs(t["delay_us"] - u["delay_us"]) <= st["delay_step_us"] / 2 + 1e-8
         for t, u in zip(st["targets"], scene["targets"])
     )
-    # Continuous logarithmic zoom changes only the view and respects wheel selection.
+    # Continuous logarithmic zoom changes only the view and zooms only the hovered control.
     before_zoom = request("state")[1]["targets"]
     assert js(
         "(()=>{app.plot.setWindow('range',123.456);app.plot.setWindow('velocity',2.345);app.plot.draw();return Math.abs(app.plot.windowValue('range')-123.456)<1e-6 && Math.abs(app.plot.windowValue('velocity')-2.345)<1e-6;})()"
     )
-    for mode in ("range", "velocity", "both", "off"):
+    for element, axis in (
+        ("plot", None),
+        ("range-zoom", "range"),
+        ("doppler-window", "velocity"),
+    ):
         result = js(
-            "(()=>{window.testWheelMode="
-            + json.dumps(mode)
-            + ";for(const axis of ['range','velocity']){const wanted=testWheelMode==='both'||testWheelMode===axis;if(app.plot.wheelAxes[axis]!==wanted)document.getElementById(axis+'-wheel').click();}const a=app.plot.windowValue('range'),b=app.plot.windowValue('velocity');const e=new WheelEvent('wheel',{deltaY:-100,bubbles:true,cancelable:true});document.getElementById('plot').dispatchEvent(e);return {range:app.plot.windowValue('range')/a,velocity:app.plot.windowValue('velocity')/b,prevented:e.defaultPrevented};})()"
+            "(()=>{const a=app.plot.windowValue('range'),b=app.plot.windowValue('velocity');const e=new WheelEvent('wheel',{deltaY:-100,bubbles:true,cancelable:true});document.getElementById("
+            + json.dumps(element)
+            + ").dispatchEvent(e);return {range:app.plot.windowValue('range')/a,velocity:app.plot.windowValue('velocity')/b,prevented:e.defaultPrevented};})()"
         )
-        assert (result["range"] < 0.99) == (mode in ("range", "both")), result
-        assert (result["velocity"] < 0.99) == (mode in ("velocity", "both")), result
-        assert result["prevented"] == (mode != "off")
+        assert (result["range"] < 0.99) == (axis == "range"), result
+        assert (result["velocity"] < 0.99) == (axis == "velocity"), result
+        assert result["prevented"] == (axis is not None)
     assert request("state")[1]["targets"] == before_zoom
     assert js(
         "(()=>{app.plot.setWindow('range',0);app.plot.setWindow('velocity',1e20);app.plot.draw();return app.plot.windowValue('range')>sceneModel.latency(app.controller.state)*sceneModel.METERS_PER_US && Math.abs(app.plot.windowValue('velocity')-1000)<1e-6;})()"
     )
-    js(
-        "for(const axis of ['range','velocity'])if(!app.plot.wheelAxes[axis])document.getElementById(axis+'-wheel').click();document.getElementById('fit').click()"
-    )
+    js("document.getElementById('fit').click()")
     # Range entry is total range; readback remains the FPGA's added delay.
     js(
         "app.plot.select(0);document.getElementById('range').value=(sceneModel.latency(app.controller.state)+1)*sceneModel.METERS_PER_US;document.getElementById('range').dispatchEvent(new Event('change'))"
@@ -439,7 +441,7 @@ try:
     assert not any(t["enabled"] for t in request("state")[1]["targets"])
     assert not errors, errors
     print(
-        "PASS: joined On/Off control, selectable continuous wheel zoom, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
+        "PASS: joined On/Off control, hover-only continuous wheel zoom, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
     )
 finally:
     js("app.controller.stop()")
