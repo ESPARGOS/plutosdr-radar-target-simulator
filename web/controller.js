@@ -21,6 +21,9 @@ export class SceneController {
     this.refreshJob = null;
     this.pollTimer = null;
     this.running = false;
+    this.motionUpperSamples = null;
+    this.positionEdits = 0;
+    this.phaseEdits = 0;
   }
 
   get dirty() {
@@ -56,6 +59,7 @@ export class SceneController {
       )
     ) {
       this.targets = snapshot.targets.map((target) => ({ ...target }));
+      this.sceneTime = performance.now();
       this.selected = Math.min(this.selected, this.targets.length - 1);
     }
     if (snapshot.muted)
@@ -79,11 +83,21 @@ export class SceneController {
   }
   edit(change) {
     if (!this.canEdit) return;
+    const before = this.targets.map((target) => ({ ...target }));
     change(this.targets);
+    for (let i = 0; i < this.targets.length; i++) {
+      const old = before[i],
+        target = this.targets[i];
+      if (!old || old.id !== target.id || old.delay_us !== target.delay_us)
+        this.positionEdits |= 1 << i;
+      if (!old || old.id !== target.id || old.doppler_hz !== target.doppler_hz)
+        this.phaseEdits |= 1 << i;
+    }
     this.changed();
   }
   replace(targets) {
     validateScene(targets, this.state);
+    this.positionEdits = this.phaseEdits = 15;
     this.edit(() => {
       this.targets = targets.map((target) => ({ ...target }));
       this.selected = targets.length ? 0 : -1;
@@ -98,6 +112,7 @@ export class SceneController {
     }
   }
   cancelPending() {
+    this.positionEdits = this.phaseEdits = 0;
     clearTimeout(this.timer);
     this.timer = null;
     this.revision++;
@@ -112,7 +127,12 @@ export class SceneController {
       const revision = this.revision;
       const targets = this.targets.map((target) => ({ ...target }));
       try {
-        const snapshot = await this.api.apply(targets, this.state);
+        const snapshot = await this.api.apply(targets, this.state, {
+          positionEdits: this.positionEdits,
+          phaseEdits: this.phaseEdits,
+          upper: this.motionUpperSamples,
+        });
+        if (revision === this.revision) this.positionEdits = this.phaseEdits = 0;
         this.confirmedRevision = revision;
         this.accept(snapshot, revision === this.revision && !this.dragging && !this.operation);
       } catch (error) {
@@ -212,7 +232,11 @@ export class SceneController {
     this.running = true;
     const poll = async () => {
       await this.refresh();
-      if (this.running) this.pollTimer = setTimeout(poll, 2500);
+      if (this.running)
+        this.pollTimer = setTimeout(
+          poll,
+          this.targets.some((t) => t.enabled && t.realistic_movement) ? 100 : 2500,
+        );
     };
     void poll();
   }

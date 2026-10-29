@@ -20,7 +20,7 @@ isn't implemented. A delay change can cause a phase jump, while changing Doppler
 preserves the oscillator's phase. Settings for all four targets take effect
 together, and samples already in the short pipeline are discarded at that point.
 While you drag a target, the browser sends updates about 12 times per second.
-Range and velocity are independent controls: changing one doesn't move the other.
+With Realistic movement off, range and velocity remain independent controls.
 
 The plot shows monostatic range, calculated as
 `c × (added delay + hardware latency) / 2`. Positive velocity means the target is
@@ -37,9 +37,46 @@ without relying on the driver's abbreviated timing scan. The test activates all
 four target paths while checking the interface, then restores the saved scene.
 RX prefers a valid data-only delay before trying clock-delay alternatives. It
 then centers the common FPGA input-delay window, keeping data and frame timing
-coherent. TX selects an interior passing point with those receive settings. Each candidate undergoes sustained PN checking,
-and a failed candidate is excluded before trying another. The checker uses the
+coherent. TX selects an interior passing point, then measures the intersection
+of the RX and TX input-delay windows. The center of that joint window must pass
+a 60-second TX check with live four-target updates, followed by another RX check.
+Each candidate undergoes sustained PN checking,
+and a failed candidate is excluded before trying another. If an FPGA input tap
+passes RX but fails TX, startup tries the other measured RX-eye taps and checks
+both directions again. It tries a few promising TX settings per input tap first,
+then performs a full TX search if none passes. The checker uses the
 shared control lock so a simultaneous scene request cannot change its test load.
+
+## Moving targets
+
+`radar-motion` runs on Pluto's ARM processor. Every 10 ms it advances enabled
+moving targets using monotonic elapsed time, then commits changed delay/Doppler
+words through the existing FPGA interface. It does not process samples or add RF
+latency. Delay changes still use whole samples (about 0.94 m at 160 MSa/s), and
+can introduce the same discontinuities as a manual delay change. This is not a
+fractional-delay resampler or a sample-exact model of a moving reflector.
+
+Positive radial velocity increases range. A target reverses velocity at either
+end of the available interval: zero added delay and the current range window's
+upper bound, rounded down to a whole delay sample. Fractional position is retained
+between ticks so slow movement does not stall. Turning a target off or muting
+pauses its motion; disabling movement freezes its current range and Doppler.
+Shrinking the window clamps targets beyond its upper edge and sends them inward.
+The window stays in effect when the browser closes. Scenes and motion state are
+not restored across a reboot.
+
+The service and CGI share the existing hardware lock. A small RAM-backed mapping
+holds motion flags, bounds, fractional positions, readback and a heartbeat. A
+scene request includes separate masks for explicitly edited positions and
+Dopplers, so editing gain or another target does not rewind a moving trajectory.
+The worker notices external register changes and rebases the corresponding
+position. Raw `rtsctl apply` and legacy `/apply` requests disable motion.
+A worker error mutes the targets; movement requests are rejected if its heartbeat
+is stale. Normal scene controls and mute do not depend on the worker being alive.
+
+The browser polls moving scenes more often and interpolates marker positions
+between readbacks. This animation is display-only; the trajectory continues on
+Pluto independently of browser timing. Ordinary target commits preserve NCO phase.
 
 ## HTTP API
 
@@ -58,6 +95,14 @@ settings, send a POST request with `Content-Type: text/plain`:
 The phase increment is `round(Doppler / fs × 2^32)`, encoded as an unsigned
 32-bit word even for negative Doppler. Gain values run from 0 to 32767; the enable
 mask runs from 0 to 15.
+
+Movement-aware clients prepend one line to `/apply`:
+`motion motion_mask position_edit_mask phase_edit_mask upper_delay_samples`.
+Masks are 0–15 and the upper bound is 1–2047. The remaining body is the same scene
+format. An unset edit bit preserves that field for an already-moving target;
+new targets must set both edit bits. `/state` exposes `motion_available`,
+`motion_upper_samples`, and each target's `realistic_movement` flag.
+Legacy requests remain supported and turn movement off.
 
 The CGI checks request lengths, values, browser origin and gain steps. It shares
 `/tmp/radar-control.lock` with `rtsctl` so simultaneous requests cannot interleave

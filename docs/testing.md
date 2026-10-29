@@ -25,7 +25,9 @@ Native tests use the real control code with an injected register/IIO backend.
 They cover mute with missing radio attributes, busy timeouts, malformed payloads,
 failed or ignored writes, rollback and rollback failure. Startup tests inject
 radio and calibration failures and check that none marks the simulator ready.
-The CGI must return an error while startup is pending or has failed. Browser-model tests
+The CGI must return an error while startup is pending or has failed. Motion tests
+cover fractional accumulation, both reflection boundaries, long elapsed times,
+pause/resume, window changes and edits that preserve other trajectories. Browser-model tests
 cover queued edits, stale responses, mute during a write and failed retuning.
 Shared fixtures check the exact scene payload in both Python and JavaScript.
 
@@ -92,3 +94,13 @@ radar simulator and cannot run against ordinary unreserved Linux memory.
 MIMO demo with a compatible 20 MSa/s waveform and expanded range. It reads the
 Pluto carrier but does not modify the pyespargos sources. A wider displayed range
 cannot remove the waveform's physical range ambiguity.
+
+## Movement on Pluto
+
+`PLUTO_URL=http://192.168.2.1 python3 tests/device_motion_check.py` exercises
+four moving targets with different signed velocities, checks their measured rate
+of travel and both bounce boundaries, then checks pause and stale-edit behavior.
+It replaces the current scene and leaves all targets muted. Results are written
+to `build/motion-live.json`. The live browser test also checks the movement toggle,
+marker animation, axis-label wheel zoom, slider popovers, two-contact pinch zoom,
+gain halos and the three-panel desktop layout.

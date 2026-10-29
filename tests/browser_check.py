@@ -75,11 +75,11 @@ js(
 )
 time.sleep(0.5)
 assert abs(js("app.controller.targets[0].delay_us") - 7.1) < 1e-7
-assert js("document.getElementById('enabled').getAttribute('aria-pressed')==='true'")
-js("document.getElementById('disabled').click()")
+assert js("document.getElementById('visible').getAttribute('aria-pressed')==='true'")
+js("document.getElementById('visible').click()")
 time.sleep(0.3)
 assert not js("app.controller.targets[0].enabled")
-js("document.getElementById('enabled').click()")
+js("document.getElementById('visible').click()")
 time.sleep(0.3)
 before = js("app.controller.targets[0].delay_us")
 # Move one target using browser pointer input, then check its changed properties.
@@ -131,6 +131,6 @@ time.sleep(0.3)
 assert js("app.controller.targets.every(t=>!t.enabled)")
 assert not errors, errors
 print(
-    "PASS: enabled target defaults, joined On/Off, precise edits, automatic quantized apply, pointer drag, mute, mobile width, no browser exceptions"
+    "PASS: enabled target defaults, target visibility toggle, precise edits, automatic quantized apply, pointer drag, mute, mobile width, no browser exceptions"
 )
 w.close()

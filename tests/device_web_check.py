@@ -96,6 +96,17 @@ try:
             break
         time.sleep(0.25)
     assert js("window.RADAR_DEVICE && app.controller.state.connected")
+    js(
+        "app.controller.error='Radar startup is in progress or the FPGA is not loaded';app.controller.notify()"
+    )
+    assert (
+        js("document.getElementById('connection').textContent")
+        == "Radar startup is in progress or the FPGA is not loaded"
+    )
+    assert js(
+        "document.querySelector('header').contains(document.getElementById('connection')) && !document.getElementById('feedback')"
+    )
+    js("app.controller.error='';app.controller.notify()")
     known_latency = initial_radio.get("hardware_latency_us") is not None
     assert js(
         "document.getElementById('fit').form===null && document.getElementById('rx-gain').form===null"
@@ -105,7 +116,7 @@ try:
         "document.getElementById('sample-rate').textContent.includes(String(app.controller.state.sample_rate_hz/1e6))"
     )
     assert js(
-        "document.getElementById('bandwidth').textContent.includes('RF bandwidth 20 MHz')"
+        "document.getElementById('bandwidth').textContent.includes('Analog bandwidth 20 MHz')"
     )
     assert js("document.getElementById('range-axis-title').textContent") == (
         "Total range (m)" if known_latency else "Range offset (m)"
@@ -157,22 +168,22 @@ try:
     )
     js("document.getElementById('fit').click()")
     assert js("document.querySelectorAll('#targets g').length===4")
-    js("app.controller.changed()")
+    js("app.controller.changed();app.controller.flush()")
     time.sleep(0.8)
     st = request("state")[1]
     assert all(t["enabled"] for t in st["targets"])
     js("app.plot.select(0)")
     assert js(
-        "document.getElementById('enabled').tagName==='BUTTON' && document.getElementById('enabled').getAttribute('aria-pressed')==='true'"
+        "document.getElementById('visible').tagName==='BUTTON' && document.getElementById('visible').getAttribute('aria-pressed')==='true'"
     )
     assert js("!document.querySelector('input[type=checkbox]')")
-    js("document.getElementById('disabled').click()")
+    js("document.getElementById('visible').click();app.controller.flush()")
     time.sleep(0.3)
     assert not request("state")[1]["targets"][0]["enabled"]
     assert js(
-        "document.getElementById('disabled').getAttribute('aria-pressed')==='true' && document.getElementById('enabled').getAttribute('aria-pressed')==='false'"
+        "document.getElementById('visible').getAttribute('aria-pressed')==='false'"
     )
-    js("document.getElementById('enabled').click()")
+    js("document.getElementById('visible').click();app.controller.flush()")
     time.sleep(0.3)
     before_gain = request("state")[1]["targets"]
     for channel, value in (("tx", -35.25), ("rx", 30)):
@@ -182,9 +193,11 @@ try:
         time.sleep(0.4)
         actual = request("state")[1]
         assert actual[channel + "_gain_db"] == value
-        assert (
-            actual["targets"] == before_gain
-        ), "Radio gain edits must preserve the scene"
+        assert actual["targets"] == before_gain, (
+            "Radio gain edits must preserve the scene",
+            before_gain,
+            actual["targets"],
+        )
     import adi
 
     radio = adi.Pluto("ip:" + urllib.parse.urlparse(base).hostname)
@@ -210,8 +223,8 @@ try:
     )
     for element, axis in (
         ("plot", None),
-        ("range-zoom", "range"),
-        ("doppler-window", "velocity"),
+        ("range-axis-title", "range"),
+        ("velocity-axis-title", "velocity"),
     ):
         result = js(
             "(()=>{const a=app.plot.windowValue('range'),b=app.plot.windowValue('velocity');const e=new WheelEvent('wheel',{deltaY:-100,bubbles:true,cancelable:true});document.getElementById("
@@ -221,6 +234,24 @@ try:
         assert (result["range"] < 0.99) == (axis == "range"), result
         assert (result["velocity"] < 0.99) == (axis == "velocity"), result
         assert result["prevented"] == (axis is not None)
+    js(
+        "document.getElementById('range-axis-title').dispatchEvent(new MouseEvent('click',{bubbles:true}))"
+    )
+    assert js(
+        "!document.getElementById('zoom-popover').hidden && document.getElementById('zoom-popover').textContent.includes('mouse wheel')"
+    )
+    old_range = js("app.plot.rangeMaximum")
+    js(
+        "document.getElementById('zoom-slider').value=.65;document.getElementById('zoom-slider').dispatchEvent(new Event('input'))"
+    )
+    assert js("app.plot.rangeMaximum") != old_range
+    js("document.getElementById('zoom-close').click()")
+    assert js("document.getElementById('zoom-popover').hidden")
+    # The gain cue remains distinguishable throughout the common high-gain range.
+    radii = js(
+        "(()=>{const t=app.controller.targets[0],saved=t.gain_db;const values=[-10,-6,-3,-1].map(g=>{t.gain_db=g;app.plot.draw();return Number(document.querySelector('.gain-aura').getAttribute('r'));});t.gain_db=saved;app.plot.draw();return values;})()"
+    )
+    assert all(b - a > 2 for a, b in zip(radii, radii[1:])), radii
     assert request("state")[1]["targets"] == before_zoom
     assert js(
         "(()=>{app.plot.setWindow('range',0);app.plot.setWindow('velocity',1e20);app.plot.draw();return app.plot.windowValue('range')>sceneModel.latency(app.controller.state)*sceneModel.METERS_PER_US && Math.abs(app.plot.windowValue('velocity')-1000)<1e-6;})()"
@@ -384,6 +415,38 @@ try:
     assert js(
         "(()=>{const r=[...document.querySelectorAll('.target-summary')].map(e=>e.getBoundingClientRect());return r.every(x=>Math.abs(x.y-r[0].y)<1);})()"
     )
+    assert js(
+        "!document.getElementById('delay-window') && !document.getElementById('doppler-window')"
+    )
+    assert js(
+        "(()=>{const radio=document.querySelector('.radio-panel').getBoundingClientRect(),plot=document.querySelector('.plot-card').getBoundingClientRect(),editor=document.querySelector('aside').getBoundingClientRect();return radio.right<plot.left && plot.right<editor.left && document.querySelector('.radio-panel').contains(document.getElementById('bandwidth'));})()"
+    )
+    # Movement is executed on Pluto; toggling it must update the API and animate.
+    js(
+        "window.beforeMotionScene=app.controller.targets.map(t=>({...t}));app.controller.replace([{enabled:true,delay_us:.5,doppler_hz:-100/sceneModel.velocityPerHz(app.controller.state),gain_db:-24}]);app.controller.flush()"
+    )
+    js(
+        "app.plot.select(0);document.getElementById('movement').click();app.controller.flush()"
+    )
+    assert request("state")[1]["targets"][0]["realistic_movement"]
+    first_delay = request("state")[1]["targets"][0]["delay_us"]
+    time.sleep(0.4)
+    assert request("state")[1]["targets"][0]["delay_us"] > first_delay
+    js("app.controller.refresh()")
+    first_marker = js(
+        "document.querySelector('#targets .target').getAttribute('transform')"
+    )
+    time.sleep(0.04)
+    assert (
+        js("document.querySelector('#targets .target').getAttribute('transform')")
+        != first_marker
+    )
+    js("document.getElementById('movement').click();app.controller.flush()")
+    stopped = request("state")[1]["targets"]
+    time.sleep(0.15)
+    assert request("state")[1]["targets"] == stopped
+    assert not stopped[0]["realistic_movement"]
+    js("app.controller.replace(window.beforeMotionScene);app.controller.flush()")
     # Fit with all targets and inspector open, including browser chrome / 125% scale equivalents.
     for width, height in ((1920, 1080), (1920, 900), (1536, 760), (1280, 720)):
         call(
@@ -395,7 +458,7 @@ try:
             "document.documentElement.scrollHeight<=innerHeight && document.documentElement.scrollWidth<=innerWidth"
         ), (width, height)
         assert js(
-            "document.querySelector('.action-bar').getBoundingClientRect().bottom<=innerHeight-8"
+            "document.querySelector('.plot-card').getBoundingClientRect().bottom<=innerHeight"
         ), (width, height)
     call(
         "Emulation.setDeviceMetricsOverride",
@@ -415,6 +478,39 @@ try:
     )
     time.sleep(0.2)
     assert js("document.documentElement.scrollWidth<=innerWidth")
+    # Real two-contact touch events must zoom the plot without moving targets.
+    js(
+        "document.getElementById('plot').scrollIntoView({block:'center'});app.plot.setWindow('range',800);app.plot.setWindow('velocity',10);app.plot.draw()"
+    )
+    touch_box = js(
+        "(()=>{const r=document.getElementById('plot').getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};})()"
+    )
+    before_pinch = request("state")[1]["targets"]
+
+    def contacts(spread):
+        return [
+            dict(
+                id=i + 1,
+                x=touch_box["x"] + touch_box["w"] * (0.6 + direction * spread),
+                y=touch_box["y"] + touch_box["h"] * 0.6,
+            )
+            for i, direction in enumerate((-1, 1))
+        ]
+
+    call(
+        "Input.dispatchTouchEvent", dict(type="touchStart", touchPoints=contacts(0.10))
+    )
+    for spread in (0.12, 0.14, 0.16, 0.18):
+        call(
+            "Input.dispatchTouchEvent",
+            dict(type="touchMove", touchPoints=contacts(spread)),
+        )
+    call("Input.dispatchTouchEvent", dict(type="touchEnd", touchPoints=[]))
+    assert js(
+        "app.plot.rangeMaximum<600 && app.plot.velocityMaximum<8 && !app.plot.pinch && app.plot.touches.size===0"
+    )
+    assert request("state")[1]["targets"] == before_pinch
+    js("app.plot.fit();window.scrollTo(0,0)")
     (root / "build/device-web-mobile.png").write_bytes(
         base64.b64decode(
             call(
@@ -431,7 +527,7 @@ try:
         "document.getElementById('bandwidth').textContent.includes('2375–2395 MHz')"
     )
     assert not any(t["enabled"] for t in request("state")[1]["targets"])
-    js("app.plot.select(0);document.getElementById('enabled').click()")
+    js("app.plot.select(0);document.getElementById('visible').click()")
     time.sleep(0.3)
     assert request("state")[1]["targets"][0][
         "enabled"
@@ -441,7 +537,7 @@ try:
     assert not any(t["enabled"] for t in request("state")[1]["targets"])
     assert not errors, errors
     print(
-        "PASS: joined On/Off control, hover-only continuous wheel zoom, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
+        "PASS: target visibility toggle control, axis-label wheel zoom, slider popovers, pinch zoom, gain halos, on-device movement and header status, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
     )
 finally:
     js("app.controller.stop()")

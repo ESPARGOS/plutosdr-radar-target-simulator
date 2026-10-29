@@ -98,12 +98,17 @@ Startup initially selects 2380 MHz, 20 MHz bandwidth, RX 0 dB and TX −60 dB.
 It first scans all 256 clock/data delay pairs in each direction with all four
 FPGA target paths active and centers the common FPGA input delays. Candidate
 settings must pass a ten-second PN check;
-marginal candidates are rejected. A separate ten-second check in each direction
-confirms the selected settings. Only a successful 160 MSa/s calibration enables
+marginal candidates are rejected. Input taps must work for both RX and TX; a TX
+failure triggers a retry with another measured-good RX tap. Startup centers the
+joint RX/TX input-delay window, checks TX for 60 seconds while updating all four
+targets, then rechecks RX. Calibration normally takes about two minutes; marginal
+timing candidates can take longer. Startup then starts the on-device movement service.
+Only a successful 160 MSa/s calibration and service startup enable
 the web controls. If it fails, targets remain muted and the API returns an error.
 The radio may restore its normal clocks for recovery, but that does not enable a
 reduced-rate simulator. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
-on the Pluto to diagnose startup failures. Scenes are not restored on reboot.
+on the Pluto to diagnose startup failures. Movement-service errors are recorded
+in `/tmp/radar-motion.log`. Scenes are not restored on reboot.
 
 The web controls have no authentication; use the device USB/private lab network.
 Some base images generate a new SSH host key on each reboot.

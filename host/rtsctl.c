@@ -1,5 +1,6 @@
 #include "radar_control.h"
 #include "radar_linux.h"
+#include "radar_motion.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -45,9 +46,14 @@ int main(int argc, char **argv) {
         return 1;
     }
     int result = 0;
-    if (!strcmp(argv[1], "apply"))
+    if (!strcmp(argv[1], "apply")) {
+        radar_motion *motion = radar_motion_open(false);
+        if (motion) {
+            motion->mask = 0;
+            radar_motion_close(motion);
+        }
         result = radar_apply(&device, &scene);
-    else if (!strcmp(argv[1], "mute"))
+    } else if (!strcmp(argv[1], "mute"))
         result = radar_mute(&device);
     if (result)
         fprintf(stderr, "%s\n", device.error);

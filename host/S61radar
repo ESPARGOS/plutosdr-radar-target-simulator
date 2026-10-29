@@ -1,6 +1,8 @@
 #!/bin/sh
 case "$1" in
  start)
+  if [ -f /tmp/radar-loaded ] && [ -f /tmp/radar-motion.pid ] &&
+     kill -0 "$(cat /tmp/radar-motion.pid)" 2>/dev/null; then exit 0; fi
   rm -f /tmp/radar-loaded /tmp/radar-failed
   cp /usr/bin/rtsctl /tmp/rtsctl || exit 1
   mkdir -p /www/cgi-bin || exit 1
@@ -17,9 +19,27 @@ case "$1" in
    echo '160 MSa/s calibration failed; targets muted; see /tmp/radar-startup.log'
    exit 1
   fi
+  rm -f /tmp/radar-motion.ready
+  /usr/bin/radar-motion > /tmp/radar-motion.log 2>&1 &
+  echo $! > /tmp/radar-motion.pid
+  attempts=0
+  while [ ! -f /tmp/radar-motion.ready ]; do
+   attempts=$((attempts+1))
+   if [ "$attempts" -ge 5 ]; then
+    /tmp/rtsctl mute
+    touch /tmp/radar-failed
+    echo 'Movement service failed to start; see /tmp/radar-motion.log'
+    exit 1
+   fi
+   sleep 1
+  done
   touch /tmp/radar-loaded
   ;;
  stop)
+  if [ -f /tmp/radar-motion.pid ]; then
+   kill "$(cat /tmp/radar-motion.pid)" 2>/dev/null
+   rm -f /tmp/radar-motion.pid
+  fi
   rm -f /tmp/radar-loaded /tmp/radar-failed
   /tmp/rtsctl mute
   ;;

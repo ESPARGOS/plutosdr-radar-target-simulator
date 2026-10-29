@@ -47,15 +47,20 @@ With the radar firmware installed, open **http://192.168.4.1/**.
 2. Set the RX and TX gains. The startup defaults are RX 0 dB and TX −60 dB.
 3. Click **+ Add target**, then drag the point or edit its settings. New targets
    are enabled automatically.
-4. Scroll over the Range or Velocity control to zoom that axis. Scrolling over
-   the plot does not change either axis.
+4. Scroll over an underlined axis label to zoom that axis. The label highlights
+   on hover; scrolling elsewhere on the plot does not zoom.
+   Click the label for a slider, or pinch with two fingers to zoom both axes.
    **Fit targets** brings all targets into view.
-5. Use **On | Off** for an individual target, or **Mute all** to silence them all.
+5. Turn on **Realistic movement** to advance a target at its radial velocity.
+   It bounces between the minimum reachable range and the top of the range axis.
+   Movement runs on Pluto, even after you close the browser.
+6. Use **Target visible** for an individual target, or **Mute all** to silence them all.
 
 There is no Apply button: edits take effect immediately. Use Export to keep a
 scene across reboots, since the simulator starts with no active targets. Setting
 RX gain switches the receiver to manual gain control. Each target also has a
-digital gain, separate from the radio's RX and TX gains.
+digital gain, separate from the radio's RX and TX gains. Its colored halo grows
+with gain, including the commonly used −10 to −1 dB range.
 
 To try the interface without hardware, you only need Python 3.10 or later:
 

@@ -25,6 +25,7 @@ export function validateScene(targets, state) {
       !target ||
       ![target.delay_us, target.doppler_hz, target.gain_db].every(Number.isFinite) ||
       typeof target.enabled !== "boolean" ||
+      (target.realistic_movement !== undefined && typeof target.realistic_movement !== "boolean") ||
       target.delay_us < 0 ||
       target.delay_us > (MAX_DELAY_SAMPLES * 1e6) / rate ||
       Math.abs(target.doppler_hz) >= rate / 2 ||

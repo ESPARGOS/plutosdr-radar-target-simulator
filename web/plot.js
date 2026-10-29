@@ -5,26 +5,155 @@ export class TargetPlot {
   constructor(controller) {
     this.controller = controller;
     this.drag = null;
+    this.touches = new Map();
+    this.pinch = null;
+    this.popoverAxis = null;
     this.rangeMaximum = 1500;
+    this.windowInitialized = false;
     this.velocityMaximum = 10;
     for (const axis of ["range", "velocity"]) {
-      const input = $(axis === "range" ? "delay-window" : "doppler-window");
-      input.oninput = () => {
-        const [low, high] = this.limits(axis);
-        this.setWindow(axis, low * (high / low) ** Number(input.value));
-        this.draw();
-      };
-      $(axis + "-zoom").addEventListener("wheel", (event) => this.zoom(event, axis), {
-        passive: false,
+      const label = $(axis + "-axis-title");
+      label.addEventListener("wheel", (event) => this.zoom(event, axis), { passive: false });
+      label.addEventListener("click", () => this.openZoom(axis));
+      label.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          this.openZoom(axis);
+        }
+        if (["ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft", "+", "-"].includes(event.key)) {
+          event.preventDefault();
+          this.setWindow(
+            axis,
+            this.windowValue(axis) *
+              (["ArrowUp", "ArrowRight", "+"].includes(event.key) ? 0.8 : 1.25),
+          );
+          this.draw();
+        }
+      });
+      label.setAttribute("title", "Click for a slider, or scroll here to zoom");
+    }
+    $("zoom-slider").oninput = () => {
+      if (!this.popoverAxis) return;
+      const [low, high] = this.limits(this.popoverAxis);
+      this.setWindow(this.popoverAxis, low * (high / low) ** Number($("zoom-slider").value));
+      this.draw();
+    };
+    $("zoom-close").onclick = () => this.closeZoom(true);
+    document.addEventListener("pointerdown", (event) => {
+      if (!$("zoom-popover").contains(event.target) && !event.target.closest(".axis-title"))
+        this.closeZoom();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.closeZoom(true);
+    });
+    window.addEventListener("resize", () => this.closeZoom());
+    $("plot").addEventListener("pointerdown", (event) => this.touchStart(event), true);
+    $("plot").addEventListener("pointermove", (event) => {
+      if (!this.touchMove(event)) this.move(event);
+    });
+    for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      $("plot").addEventListener(event, (event) => {
+        const pinching = Boolean(this.pinch);
+        this.touches.delete(event.pointerId);
+        if (!this.touches.size) this.pinch = null;
+        if (!pinching) this.endDrag(event);
       });
     }
-    $("plot").addEventListener("pointermove", (event) => this.move(event));
-    for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
-      $("plot").addEventListener(event, (event) => this.endDrag(event));
-    }
+    $("plot").addEventListener(
+      "wheel",
+      (event) => {
+        // Trackpad pinch is delivered as a Ctrl+wheel gesture by Chromium.
+        if (event.ctrlKey && !event.target.closest(".axis-title")) {
+          this.zoom(event, "range");
+          this.zoom(event, "velocity");
+        }
+      },
+      { passive: false },
+    );
     $("fit").onclick = () => this.fit();
     this.observer = new ResizeObserver(() => this.draw());
     this.observer.observe($("plot-wrap"));
+    const animate = () => {
+      if (!this.controller.dirty && !this.controller.dragging) {
+        for (const marker of $("targets").children) {
+          const target = this.controller.targets[Number(marker.dataset.index)];
+          if (!target?.enabled || !target.realistic_movement) continue;
+          const { x, y } = this.point(this.visualTarget(target));
+          marker.setAttribute("transform", `translate(${x},${y})`);
+        }
+      }
+      requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }
+  openZoom(axis) {
+    if (this.popoverAxis === axis && !$("zoom-popover").hidden) {
+      this.closeZoom();
+      return;
+    }
+    this.popoverAxis = axis;
+    $("zoom-title").textContent = axis === "range" ? "Range window" : "Velocity window";
+    $("zoom-slider").setAttribute("aria-label", $("zoom-title").textContent);
+    $("zoom-popover").hidden = false;
+    this.syncZoom();
+    const label = $(axis + "-axis-title").getBoundingClientRect();
+    const popup = $("zoom-popover").getBoundingClientRect();
+    $("zoom-popover").style.left =
+      `${Math.max(12, Math.min(innerWidth - popup.width - 12, label.left + label.width / 2 - popup.width / 2))}px`;
+    $("zoom-popover").style.top =
+      `${Math.max(12, Math.min(innerHeight - popup.height - 12, label.top - popup.height - 12))}px`;
+    $("zoom-slider").focus({ preventScroll: true });
+  }
+  closeZoom(focus = false) {
+    const axis = this.popoverAxis;
+    this.popoverAxis = null;
+    $("zoom-popover").hidden = true;
+    if (focus && axis) $(axis + "-axis-title").focus({ preventScroll: true });
+  }
+  syncZoom() {
+    if (!this.popoverAxis) return;
+    const axis = this.popoverAxis,
+      [low, high] = this.limits(axis);
+    $("zoom-slider").value = Math.log(this.windowValue(axis) / low) / Math.log(high / low);
+    $("zoom-value").textContent =
+      axis === "range"
+        ? `0–${format(this.rangeMaximum, 1)} m`
+        : `±${format(this.velocityMaximum, 2)} m/s`;
+  }
+  touchStart(event) {
+    if (event.pointerType !== "touch" || event.target.closest(".axis-title")) return;
+    if (this.touches.size >= 2) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    $("plot").setPointerCapture(event.pointerId);
+    if (this.touches.size === 2) {
+      if (this.drag) this.endDrag({ pointerId: this.drag.id }, false);
+      const [a, b] = [...this.touches.values()];
+      this.pinch = {
+        distance: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)),
+        range: this.rangeMaximum,
+        velocity: this.velocityMaximum,
+      };
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+  touchMove(event) {
+    if (!this.touches.has(event.pointerId)) return false;
+    this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!this.pinch) return false;
+    event.preventDefault();
+    if (this.touches.size >= 2) {
+      const [a, b] = [...this.touches.values()];
+      const factor = this.pinch.distance / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y));
+      this.setWindow("range", this.pinch.range * factor);
+      this.setWindow("velocity", this.pinch.velocity * factor);
+      this.draw();
+    }
+    return true;
   }
   get state() {
     return this.controller.state;
@@ -44,8 +173,17 @@ export class TargetPlot {
     value = Math.max(low, Math.min(high, value));
     if (axis === "range") this.rangeMaximum = value;
     else this.velocityMaximum = value;
-    $(axis === "range" ? "delay-window" : "doppler-window").value =
-      Math.log(value / low) / Math.log(high / low);
+    if (axis === "range" && this.state?.sample_rate_hz) {
+      const upper = Math.max(1, Math.floor((this.rangeSpan() * this.state.sample_rate_hz) / 1e6));
+      const previous = this.controller.motionUpperSamples;
+      this.controller.motionUpperSamples = upper;
+      if (
+        previous !== null &&
+        previous !== upper &&
+        this.controller.targets.some((t) => t.realistic_movement)
+      )
+        this.controller.changed();
+    }
   }
   rangeCeiling() {
     return this.rangeMaximum / METERS_PER_US;
@@ -69,6 +207,30 @@ export class TargetPlot {
       width: w - 112,
       height: h - 84,
       centerX: (88 + w - 24) / 2,
+    };
+  }
+  visualTarget(target) {
+    if (
+      !target.enabled ||
+      !target.realistic_movement ||
+      this.controller.dirty ||
+      this.controller.dragging
+    )
+      return target;
+    // Interpolation is visual only; the Pluto owns the trajectory and its bounds.
+    const upper = (this.state.motion_upper_samples * 1e6) / this.state.sample_rate_hz;
+    if (!(upper > 0)) return target;
+    const elapsed = Math.min(
+      0.3,
+      Math.max(0, (performance.now() - (this.controller.sceneTime || performance.now())) / 1000),
+    );
+    const speed = (-target.doppler_hz / this.state.frequency_hz) * 1e6;
+    const unfolded = speed >= 0 ? target.delay_us : 2 * upper - target.delay_us;
+    const folded = (unfolded + Math.abs(speed) * elapsed) % (2 * upper);
+    return {
+      ...target,
+      delay_us: folded >= upper ? 2 * upper - folded : folded,
+      doppler_hz: folded >= upper ? Math.abs(target.doppler_hz) : -Math.abs(target.doppler_hz),
     };
   }
   point(target) {
@@ -139,7 +301,7 @@ export class TargetPlot {
     event.stopPropagation();
     if (event.button !== 0 || !this.controller.canEdit) return;
     const position = this.plotPoint(event),
-      target = this.point(this.controller.targets[index]);
+      target = this.point(this.visualTarget(this.controller.targets[index]));
     this.drag = {
       index,
       id: event.pointerId,
@@ -174,11 +336,11 @@ export class TargetPlot {
       }),
     );
   }
-  endDrag(event) {
+  endDrag(event, release = true) {
     if (!this.drag || event.pointerId !== this.drag.id) return;
     this.drag = null;
     $("plot").classList.remove("dragging");
-    if ($("plot").hasPointerCapture(event.pointerId))
+    if (release && $("plot").hasPointerCapture(event.pointerId))
       $("plot").releasePointerCapture(event.pointerId);
     this.controller.endDrag();
   }
@@ -192,10 +354,20 @@ export class TargetPlot {
     this.draw();
   }
   draw() {
+    if (!this.windowInitialized && this.state?.sample_rate_hz) {
+      this.windowInitialized = true;
+      if (
+        this.controller.targets.some((t) => t.realistic_movement) &&
+        this.state.motion_upper_samples
+      )
+        this.rangeMaximum =
+          ((this.state.motion_upper_samples * 1e6) / this.state.sample_rate_hz +
+            latency(this.state)) *
+          METERS_PER_US;
+    }
     this.setWindow("range", this.rangeMaximum);
     this.setWindow("velocity", this.velocityMaximum);
-    $("range-window-value").textContent = `0–${format(this.rangeMaximum, 1)} m`;
-    $("velocity-window-value").textContent = `±${format(this.velocityMaximum, 2)} m/s`;
+
     const p = this.geometry();
     if (p.width <= 0 || p.height <= 0) return;
     $("plot").setAttribute("viewBox", `0 0 ${p.w} ${p.h}`);
@@ -280,6 +452,7 @@ export class TargetPlot {
         { "text-anchor": "end", class: "minimum-label" },
       );
     }
+    this.syncZoom();
     this.drawTargets();
   }
   drawTargets() {
@@ -301,7 +474,43 @@ export class TargetPlot {
         },
         group,
       );
-      if (index === selected) svg("circle", { r: 24, fill: colors[index], opacity: 0.12 }, marker);
+      const strength = 10 ** (target.gain_db / 40);
+      const radius = 16 + 44 * strength;
+      svg(
+        "circle",
+        {
+          class: "gain-aura",
+          r: radius,
+          fill: colors[index],
+          opacity: target.enabled ? 0.06 + 0.08 * strength : 0.025,
+          "pointer-events": "none",
+        },
+        marker,
+      );
+      svg(
+        "circle",
+        {
+          class: "gain-aura-inner",
+          r: 16 + 24 * strength,
+          fill: colors[index],
+          opacity: target.enabled ? 0.08 + 0.08 * strength : 0.03,
+          "pointer-events": "none",
+        },
+        marker,
+      );
+      if (index === selected)
+        svg(
+          "circle",
+          {
+            r: 19,
+            fill: "none",
+            stroke: colors[index],
+            "stroke-width": 2,
+            "stroke-opacity": 0.7,
+            "pointer-events": "none",
+          },
+          marker,
+        );
       svg(
         "circle",
         {
@@ -346,10 +555,5 @@ export class TargetPlot {
       button.onclick = () => this.select(index);
       list.append(button);
     });
-    const amplitude = targets
-      .filter((target) => target.enabled)
-      .reduce((sum, target) => sum + 10 ** (target.gain_db / 20), 0);
-    $("headroom").hidden = amplitude <= 1;
-    $("headroom").textContent = "Combined gain may cause clipping. Reduce target gains if needed.";
   }
 }

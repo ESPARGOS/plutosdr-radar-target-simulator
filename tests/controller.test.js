@@ -182,3 +182,33 @@ test("failed retune reads hardware back without resending an enabled scene", asy
   assert.equal(controller.dirty, false);
   assert.equal(applied, false);
 });
+
+test("an edit to one target does not overwrite another moving trajectory", async (t) => {
+  const calls = [];
+  const controller = setup(t, {
+    apply: async (targets, state, edits) => {
+      calls.push(edits);
+      return { ...snapshot(), targets };
+    },
+  });
+  controller.targets.push({ ...target, realistic_movement: true });
+  controller.edit((targets) => {
+    targets[0].gain_db = -12;
+  });
+  await controller.flush();
+  assert.equal(calls[0].positionEdits, 0);
+  assert.equal(calls[0].phaseEdits, 0);
+  controller.edit((targets) => {
+    targets[0].delay_us = 2;
+    targets[0].doppler_hz = 20;
+  });
+  await controller.flush();
+  assert.equal(calls[1].positionEdits, 1);
+  assert.equal(calls[1].phaseEdits, 1);
+  controller.edit((targets) => {
+    targets[1].gain_db = -9;
+  });
+  await controller.flush();
+  assert.equal(calls[2].positionEdits, 0);
+  assert.equal(calls[2].phaseEdits, 0);
+});

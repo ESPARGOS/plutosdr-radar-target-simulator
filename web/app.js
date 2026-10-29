@@ -32,17 +32,13 @@ export function renderEditor() {
   setField("gain", target.gain_db, force);
   $("delay-display").textContent = `${format(target.delay_us + latency(state), 5)} µs`;
   $("gain-label").textContent = `${format(target.gain_db, 1)} dB`;
-  for (const [id, enabled] of [
-    ["enabled", true],
-    ["disabled", false],
-  ]) {
-    $(id).setAttribute("aria-pressed", String(target.enabled === enabled));
-    $(id).setAttribute(
-      "aria-label",
-      `Turn target ${controller.selected + 1} ${enabled ? "on" : "off"}`,
-    );
-  }
-  for (const id of ["range", "doppler", "gain", "enabled", "disabled", "remove"]) {
+  $("visible").setAttribute("aria-pressed", String(target.enabled));
+  $("movement").setAttribute("aria-pressed", String(Boolean(target.realistic_movement)));
+  $("movement").disabled = !controller.canEdit || !state?.motion_available;
+  $("movement").title = state?.motion_available
+    ? "Move with radial velocity and bounce at the range limits"
+    : "Requires the movement service on Pluto";
+  for (const id of ["range", "doppler", "gain", "visible", "remove"]) {
     $(id).disabled = !controller.canEdit;
   }
 }
@@ -80,7 +76,7 @@ function renderRadio() {
     Number(hz / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, useGrouping: false });
   $("bandwidth").textContent =
     Number.isFinite(state.frequency_hz) && Number.isFinite(bandwidth)
-      ? `RF bandwidth ${format(bandwidth / 1e6)} MHz · ≈ ${frequency(state.frequency_hz - bandwidth / 2)}–${frequency(state.frequency_hz + bandwidth / 2)} MHz`
+      ? `Analog bandwidth ${format(bandwidth / 1e6)} MHz\n≈ ${frequency(state.frequency_hz - bandwidth / 2)}–${frequency(state.frequency_hz + bandwidth / 2)} MHz`
       : "Radio settings unavailable";
   $("bandwidth").title = "Nominal analog passband; filter edges roll off gradually";
   const knownLatency = Number.isFinite(state.hardware_latency_us);
@@ -93,25 +89,31 @@ function render() {
   renderEditor();
   plot.draw();
   const state = controller.state;
+  const amplitude = controller.targets
+    .filter((t) => t.enabled)
+    .reduce((sum, t) => sum + 10 ** (t.gain_db / 20), 0);
+  const warning =
+    controller.error ||
+    (state?.clipped
+      ? "Clipping detected. Reduce gain."
+      : amplitude > 1
+        ? "Combined gain may cause clipping. Reduce target gains."
+        : "");
   $("connection").textContent =
-    state?.mode === "demo"
-      ? "Demo · no RF output"
-      : state?.connected
-        ? "Pluto connected"
-        : "Controller unavailable";
-  $("connection").className =
-    "status " + (state?.mode === "demo" ? "demo" : state?.connected ? "online" : "");
-  $("feedback").textContent =
-    controller.error || (state?.clipped ? "Clipping detected. Reduce gain." : "");
-  $("feedback").classList.toggle("error", Boolean(controller.error || state?.clipped));
-  $("mute").disabled = Boolean(controller.operation);
-  $("change-status").textContent = controller.operation
-    ? "Updating…"
-    : controller.error
-      ? "Check settings"
+    warning ||
+    (controller.operation
+      ? "Updating…"
       : controller.dirty
         ? "Applying…"
-        : "Ready";
+        : state?.mode === "demo"
+          ? "Demo · no RF output"
+          : state?.connected
+            ? "Pluto connected"
+            : "Controller unavailable");
+  $("connection").className =
+    "status " +
+    (warning ? "error" : state?.mode === "demo" ? "demo" : state?.connected ? "online" : "");
+  $("mute").disabled = Boolean(controller.operation);
 }
 
 function showError(error) {
@@ -161,15 +163,14 @@ $("gain").oninput = () =>
   editSelected((target) => {
     target.gain_db = Number($("gain").value);
   });
-for (const [id, enabled] of [
-  ["enabled", true],
-  ["disabled", false],
-]) {
-  $(id).onclick = () =>
-    editSelected((target) => {
-      target.enabled = enabled;
-    });
-}
+$("visible").onclick = () =>
+  editSelected((target) => {
+    target.enabled = !target.enabled;
+  });
+$("movement").onclick = () =>
+  editSelected((target) => {
+    target.realistic_movement = !target.realistic_movement;
+  });
 $("remove").onclick = () =>
   controller.edit((targets) => {
     targets.splice(controller.selected, 1);
@@ -208,12 +209,15 @@ $("carrier-form").onsubmit = async (event) => {
     $("carrier-input").value = controller.state.frequency_hz / 1e6;
 };
 $("export").onclick = () => {
-  const targets = controller.targets.map(({ enabled, delay_us, doppler_hz, gain_db }) => ({
-    enabled,
-    delay_us,
-    doppler_hz,
-    gain_db,
-  }));
+  const targets = controller.targets.map(
+    ({ enabled, delay_us, doppler_hz, gain_db, realistic_movement }) => ({
+      enabled,
+      delay_us,
+      doppler_hz,
+      gain_db,
+      realistic_movement: Boolean(realistic_movement),
+    }),
+  );
   const url = URL.createObjectURL(
     new Blob([JSON.stringify({ version: 1, targets }, null, 2)], { type: "application/json" }),
   );

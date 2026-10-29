@@ -3,6 +3,11 @@
 set -eu
 [ -f /tmp/radar.bin ] && [ -x /tmp/rtsctl ]
 rm -f /tmp/radar-loaded /tmp/radar-failed
+if pidof radar-motion >/dev/null; then
+ killall radar-motion
+ sleep 1
+ if pidof radar-motion >/dev/null; then echo 'Movement service did not stop'; exit 1; fi
+fi
 # Stop known applications that own the old register map before reconfiguration.
 # DICHASUS starts this process directly; its init script has no stop action.
 if pidof maia-reftx >/dev/null; then killall maia-reftx; fi
@@ -41,5 +46,19 @@ if ! sh /tmp/radio_setup.sh || ! sh /tmp/radio_fast_setup.sh; then
  echo '160 MSa/s startup failed; targets muted; simulator unavailable'
  exit 1
 fi
+rm -f /tmp/radar-motion.ready
+nohup /tmp/radar-motion > /tmp/radar-motion.log 2>&1 < /dev/null &
+echo $! > /tmp/radar-motion.pid
+attempts=0
+while [ ! -f /tmp/radar-motion.ready ]; do
+ attempts=$((attempts+1))
+ if [ "$attempts" -ge 5 ]; then
+  /tmp/rtsctl mute
+  touch /tmp/radar-failed
+  echo 'Movement service failed to start'
+  exit 1
+ fi
+ sleep 1
+done
 touch /tmp/radar-loaded
 printf 'Volatile radar image loaded. Reboot Pluto to restore the installed firmware.\n'

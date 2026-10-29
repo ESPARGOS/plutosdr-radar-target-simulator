@@ -1,6 +1,7 @@
 /* HTTP controls for the Pluto web UI. */
 #include "radar_control.h"
 #include "radar_linux.h"
+#include "radar_motion.h"
 #include <errno.h>
 #include <math.h>
 #include <stdio.h>
@@ -22,6 +23,8 @@ typedef struct {
     uint64_t carrier;
     bool tx;
     double gain;
+    bool motion_request;
+    unsigned motion_mask, position_edits, phase_edits, upper;
 } request;
 
 static void error_response(int code, const char *message) {
@@ -86,7 +89,25 @@ static int parse_request(request *result) {
         return -1;
     }
     if (result->operation == APPLY) {
-        if (radar_parse_scene(body, &result->scene)) {
+        const char *scene = body;
+        result->position_edits = result->phase_edits = 15;
+        result->upper = RADAR_MAX_DELAY;
+        if (!strncmp(body, "motion ", 7)) {
+            int consumed = 0;
+            const char *newline = strchr(body, '\n');
+            if (!newline ||
+                sscanf(body, "motion %u %u %u %u%n", &result->motion_mask, &result->position_edits,
+                       &result->phase_edits, &result->upper, &consumed) != 4 ||
+                body + consumed != newline || result->motion_mask > 15 ||
+                result->position_edits > 15 || result->phase_edits > 15 || result->upper < 1 ||
+                result->upper > RADAR_MAX_DELAY) {
+                error_response(400, "Invalid movement settings");
+                return -1;
+            }
+            result->motion_request = true;
+            scene = newline + 1;
+        }
+        if (radar_parse_scene(scene, &result->scene)) {
             error_response(400, "Invalid target mask or register values");
             return -1;
         }
@@ -128,7 +149,7 @@ static void json_number(const char *name, double value) {
         fputs("null", stdout);
 }
 
-static void state_response(radar_device *device, bool muted) {
+static void state_response(radar_device *device, bool muted, const radar_motion *motion) {
     radar_scene scene;
     radar_get_scene(device, &scene);
     unsigned long rate = radar_sample_rate(device);
@@ -157,6 +178,8 @@ static void state_response(radar_device *device, bool muted) {
            RADAR_TARGETS, muted ? "true" : "false", clipped ? "true" : "false",
            radio_available ? "true" : "false",
            radio_available ? "null" : "\"Some radio settings could not be read\"");
+    printf(",\"motion_available\":%s", radar_motion_available(motion) ? "true" : "false");
+    json_number("motion_upper_samples", motion ? motion->upper : RADAR_MAX_DELAY);
     json_number("sample_rate_hz", fs);
     json_number("frequency_hz", frequency);
     json_number("max_delay_us", RADAR_MAX_DELAY * 1e6 / fs);
@@ -182,6 +205,8 @@ static void state_response(radar_device *device, bool muted) {
             continue;
         printf("%s{\"id\":%u,\"enabled\":%s", emitted++ ? "," : "", i + 1,
                enabled ? "true" : "false");
+        printf(",\"realistic_movement\":%s",
+               motion && (motion->mask & (1u << i)) ? "true" : "false");
         json_number("delay_us", target->delay * 1e6 / fs);
         json_number("doppler_hz", (int32_t)target->phase * fs / 4294967296.0);
         json_number("gain_db", target->gain ? fmax(-90, 20 * log10(target->gain / 32768.0)) : -90);
@@ -195,9 +220,11 @@ int main(void) {
     if (parse_request(&input))
         return 0;
     if (access(RADAR_READY_FILE, F_OK)) {
-        error_response(503, access(RADAR_FAILED_FILE, F_OK)
-                                ? "Radar startup is in progress or the FPGA is not loaded"
-                                : "160 MSa/s calibration failed; targets remain muted");
+        error_response(
+            503,
+            access(RADAR_FAILED_FILE, F_OK)
+                ? "Radar startup is in progress or the FPGA is not loaded"
+                : "Radar startup failed; targets remain muted; check startup and movement logs");
         return 0;
     }
     radar_device device;
@@ -206,11 +233,49 @@ int main(void) {
         error_response(503, device.error);
         return 0;
     }
+    radar_motion *motion = radar_motion_open(false);
+    if (input.motion_request && !radar_motion_available(motion)) {
+        error_response(503, "Movement service unavailable");
+        radar_motion_close(motion);
+        radar_linux_close(&backend);
+        return 0;
+    }
     int result;
     switch (input.operation) {
-    case APPLY:
+    case APPLY: {
+        radar_motion next = motion ? *motion : (radar_motion){0};
+        if (motion) {
+            radar_scene current;
+            radar_get_scene(&device, &current);
+            /* Use current readback when another controller has changed the scene. */
+            for (unsigned i = 0; i < RADAR_TARGETS; ++i)
+                if (current.targets[i].delay != next.last.targets[i].delay)
+                    next.position[i] = current.targets[i].delay;
+            next.last = current;
+            double now = radar_motion_now();
+            if (next.mask & current.mask) {
+                double carrier;
+                unsigned long rate = radar_sample_rate(&device);
+                if (!rate ||
+                    radar_read_number(&device, "out_altvoltage0_RX_LO_frequency", &carrier)) {
+                    device.error = "Motion clock or carrier unavailable";
+                    result = -1;
+                    break;
+                }
+                radar_motion_advance(&next, &current, now, rate, carrier);
+            }
+            radar_motion_configure(&next, &input.scene, input.motion_mask, input.position_edits,
+                                   input.phase_edits, input.upper, now);
+        }
         result = radar_apply(&device, &input.scene);
+        if (motion && !result)
+            *motion = next;
+        if (motion && result) {
+            motion->mask = 0;
+            radar_mute(&device);
+        }
         break;
+    }
     case MUTE:
         result = radar_mute(&device);
         break;
@@ -227,7 +292,8 @@ int main(void) {
     if (result)
         error_response(result == RADAR_INVALID ? 400 : 503, device.error);
     else
-        state_response(&device, input.operation == MUTE);
+        state_response(&device, input.operation == MUTE, motion);
+    radar_motion_close(motion);
     radar_linux_close(&backend);
     return 0;
 }

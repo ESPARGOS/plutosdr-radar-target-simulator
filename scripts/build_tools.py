@@ -11,8 +11,9 @@ from build_provenance import digest
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "build/tools-manifest.json"
 COMPILER = "/opt/Xilinx/Vitis/2023.2/gnu/aarch32/lin/gcc-arm-linux-gnueabi/bin/arm-linux-gnueabihf-gcc"
-COMMON = ["host/radar_control.c", "host/radar_linux.c"]
+COMMON = ["host/radar_control.c", "host/radar_linux.c", "host/radar_motion.c"]
 PROGRAMS = {
+    "radar-motion": ["host/radar_motion_daemon.c", *COMMON],
     "rtsctl": ["host/rtsctl.c", *COMMON],
     "radar.cgi": ["host/radar_cgi.c", *COMMON],
     "radio-pn": ["host/radio_pn.c", *COMMON],
@@ -25,6 +26,7 @@ def sources():
         [
             "host/radar_control.h",
             "host/radar_linux.h",
+            "host/radar_motion.h",
             "scripts/build_tools.py",
             "scripts/container.sh",
         ]

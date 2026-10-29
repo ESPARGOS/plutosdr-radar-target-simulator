@@ -72,3 +72,6 @@ controls, browser and volatile testing on a second Pluto.
 
 [Second-Pluto timing calibration](validation/160m-second-pluto.md) explains the
 160 MSa/s startup fix and the device-specific interface checks.
+
+The [moving-target check](validation/moving-targets.md) covers the on-device ARM
+movement service, reflected trajectories and the subsequent UI layout changes.

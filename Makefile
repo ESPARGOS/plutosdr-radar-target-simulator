@@ -40,6 +40,8 @@ test-native:
 	mkdir -p build/tests
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost -Itests host/radar_control.c tests/fake_device.c tests/test_native_control.c -lm -o build/tests/native-control
 	build/tests/native-control
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost host/radar_motion.c tests/test_motion.c -lm -o build/tests/motion
+	build/tests/motion
 	python3 tests/test_native_api.py
 	python3 tests/test_startup.py
 	python3 tests/test_scene_contract.py

@@ -17,6 +17,8 @@ subprocess.run(
         f'-DRADAR_FAILED_FILE="{BUILD / "radar-failed"}"',
         "host/radar_cgi.c",
         "host/radar_control.c",
+        "host/radar_motion.c",
+        f'-DRADAR_MOTION_FILE="{BUILD / "motion.state"}"',
         "tests/fake_device.c",
         "tests/fake_linux.c",
         "-lm",
@@ -82,9 +84,20 @@ assert request("state")[1]["hardware_latency_us"] == 0.325
 
 
 code, response, hardware = request("state", ready=False, failed=True)
-assert code == 503 and "160 MSa/s calibration failed" in response["error"]
+assert code == 503 and "Radar startup failed" in response["error"]
 assert hardware is None
 assert request("state", ready=False)[0] == 503
+
+for header in (
+    "motion 16 0 0 100",
+    "motion 1 0 0 0",
+    "motion 1 0 0 2048",
+    "motion 1 0 0 1 trailing",
+):
+    assert request("apply", (header + "\n0\n" + "0 0 0\n" * 4).encode())[0] == 400
+assert (
+    request("apply", ("motion 1 15 15 100\n1\n" + "0 0 100\n" * 4).encode())[0] == 503
+)
 
 print(
     "PASS: native CGI failure responses, independent mute, rollback, malformed payloads, origins and startup failure"
