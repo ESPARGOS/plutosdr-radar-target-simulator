@@ -1,8 +1,12 @@
 # PlutoSDR radar target simulator
 
-This project turns a PlutoSDR into a radar target simulator. It receives a signal,
-creates up to four echoes with different delays and Doppler shifts, and transmits
-them back. The FPGA processes the signal.
+Radar target simulators are devices for testing radar hardware and signal processing algorithms
+without requiring large-scale trial runs. But since these devices are so specialized, they tend
+to be quite expensive.
+
+This firmware turns a low-cost PlutoSDR into a radar target simulator. The PlutoSDR receives a signal,
+creates up to four echoes with different delays and Doppler shifts via real-time FPGA processing,
+and transmits them back.
 
 ![Radar, PlutoSDR and the two computer roles](docs/assets/test-setup.svg)
 
