@@ -209,13 +209,6 @@ revisions still need testing.
 Build outputs, firmware backups and raw captures stay in `build/` and are excluded
 from Git.
 
-## Preparing a GitHub release
-
-Run `make release` after building the FPGA and preparing the base firmware.
-The gitignored `release/` folder contains the four files to upload: `pluto.frm`,
-`firmware-manifest.json`, `radar-target-simulator-source.tar.gz` and `SHA256SUMS`.
-See the [release instructions](docs/build.md#preparing-a-release) for details.
-
 ## Documentation
 
 - [Build setup](docs/build.md)
