@@ -15,7 +15,7 @@ dependencies. The development container's `maia-sdr` name identifies its publish
 The driver must provide the IIO/debug attributes used by `radio_fast_setup.sh`,
 including `adi,qec-tracking-slow-mode-enable`. The optional ADC snapshot utility
 has a separate reserved-memory requirement; the simulator itself does not.
-Other Pluto revisions and driver versions still need testing.
+Compatibility with other Pluto revisions and driver versions is not guaranteed.
 
 The expected FIT image order is rev-a DTB, rev-b DTB, rev-c DTB, FPGA, kernel,
 rootfs; check `dumpimage -l` before packaging. Keep the base firmware's source
@@ -80,7 +80,7 @@ owns the radio before deployment.
 
 ## Writing the firmware to flash
 
-The updater writes the `qspi-linux` partition. It checks for a tested Rev.B/Rev.C model,
+The updater writes the `qspi-linux` partition. It checks for a Rev.B/Rev.C model,
 partition name and checksum before muting the targets and writing the image.
 It then reads back the image to verify the write and updates U-Boot's `fit_size`.
 The matching `rtsctl` must already be available at `/tmp/rtsctl` (from a running
@@ -121,7 +121,7 @@ key; do not disable SSH host verification globally.
 
 ## DFU recovery
 
-For the tested bootloader, create a DFU-suffixed copy of the **original FIT**:
+Create a DFU-suffixed recovery image from your **original FIT**:
 
 ```sh
 cp build/firmware/original.itb build/firmware/recovery.dfu

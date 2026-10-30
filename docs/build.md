@@ -80,9 +80,8 @@ and run `make test-local`. Analysis tests additionally use
 `python3 -m pip install -r requirements-test.txt`, then `make test-analysis`.
 The optional `make capture-tool` builds the lab-only native ADC snapshot utility.
 
-The hashes of the tested firmware are in
-[the build manifest](validation/firmware-manifest.json). Rebuilding can produce
-different hashes because the tools include timestamps in some outputs.
+Each build writes its firmware hashes to `build/firmware/firmware-manifest.json`.
+Rebuilding can produce different hashes because some outputs include timestamps.
 
 ## Preparing a release
 

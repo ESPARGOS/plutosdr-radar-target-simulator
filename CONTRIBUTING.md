@@ -17,7 +17,9 @@ setup so others can compare the results.
 
 Keep generated files in `build/` and temporary files in `RTS_SCRATCH_DIR`. Vendor
 checkouts, tool installations, firmware backups, credentials and raw captures
-should stay out of Git. Small measurement summaries belong in `docs/validation/`.
+should stay out of Git. Keep identifying hardware records in the gitignored `private-tests/` folder.
+Keep test-run reports there too. Public documentation should describe how to
+use, build and maintain the simulator, rather than recount development sessions.
 For firmware releases, include a checksum, source revision and the notices and
 source materials required by the bundled components' licenses.
 

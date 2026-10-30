@@ -23,9 +23,13 @@ class ReleaseTest(unittest.TestCase):
             root = Path(temp)
             subprocess.run(["git", "init", "-q", str(root)], check=True)
             (root / "build").mkdir()
-            (root / ".gitignore").write_text("/build/\n/release/\n.env\n")
+            (root / ".gitignore").write_text(
+                "/build/\n/release/\n/private-tests/\n.env\n"
+            )
             (root / "README.md").write_text("Current working copy\n")
             (root / ".env").write_text("private settings\n")
+            (root / "private-tests").mkdir()
+            (root / "private-tests/device.json").write_text("private device record\n")
             firmware = root / "build/firmware"
             firmware.mkdir()
             (firmware / "pluto.frm").write_bytes(b"firmware")

@@ -23,6 +23,7 @@ subprocess.run(
         f'-DRADAR_MOTION_FILE="{BUILD / "motion.state"}"',
         "tests/fake_device.c",
         "tests/fake_linux.c",
+        "-Wl,--wrap=fopen",
         "-lm",
         "-o",
         str(BUILD / "cgi-test"),
@@ -48,8 +49,9 @@ def request(path, body=b"", ready=True, failed=False, fallback=False, **faults):
         PATH_INFO="/" + path,
         CONTENT_LENGTH=str(len(body)),
         HTTP_HOST="pluto.test",
-        **faults,
+        RADAR_TEST_UPTIME="120.00 0.00\n",
     )
+    env.update(faults)
     result = subprocess.run(
         [str(BUILD / "cgi-test")], input=body, capture_output=True, env=env, check=True
     )
@@ -101,16 +103,26 @@ code, response, hardware = request("state", ready=False, failed=True)
 assert code == 503 and "Radar startup failed" in response["error"]
 assert hardware is None
 assert request("state", ready=False)[0] == 503
-now = float(Path("/proc/uptime").read_text().split()[0])
-startup_file.write_text(f"{now-90} {now-20} tx_verify\n")
-code, response, hardware = request("state", ready=False)
-assert code == 503 and hardware is None
-assert response["error"] == "Checking TX integrity (5-second startup test)"
-assert 90 <= response["startup"]["elapsed_seconds"] <= 92
-assert 20 <= response["startup"]["stage_elapsed_seconds"] <= 22
-assert not response["startup"]["failed"]
-assert request("state", ready=False, failed=True)[1]["startup"]["failed"]
+# A new CI runner can be younger than the startup interval being tested.
+# Exercise that case without depending on the real machine's uptime.
+for now, started, changed in ((45, 5, 25), (120, 30, 100)):
+    startup_file.write_text(f"{started} {changed} tx_verify\n")
+    clock = {"RADAR_TEST_UPTIME": f"{now}.00 0.00\n"}
+    code, response, hardware = request("state", ready=False, **clock)
+    assert code == 503 and hardware is None
+    assert (
+        response["error"] == "Checking TX integrity (5-second startup test)"
+    ), response
+    assert response["startup"]["elapsed_seconds"] == now - started
+    assert response["startup"]["stage_elapsed_seconds"] == now - changed
+    assert not response["startup"]["failed"]
+    assert request("state", ready=False, failed=True, **clock)[1]["startup"]["failed"]
+    fallback = request("state", ready=False, fallback=True, **clock)[1]
+    assert fallback["startup"]["fallback"]
+    assert fallback["error"].startswith("61.44 MHz fallback: Checking TX integrity")
 for record in (
+    "-45 25 tx_verify",
+    "0 121 radio",
     "nan 0 radio",
     "0 inf radio",
     "9 1 radio",

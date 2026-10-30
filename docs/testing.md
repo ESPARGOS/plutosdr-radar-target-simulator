@@ -39,12 +39,6 @@ PATH. The test browser runs with its sandbox disabled and visits only the local
 preview. It does not connect to Pluto or ESPARGOS. Python syntax and shell
 syntax checks also run in `.github/workflows/tests.yml`.
 
-Results from the clean-checkout test are recorded in
-[validation/source-check.md](validation/source-check.md). More recent refactor and
-second-device checks are in [software-refactor.md](validation/software-refactor.md). The GitHub workflow
-uses the official [checkout](https://github.com/actions/checkout) and
-[setup-python](https://github.com/actions/setup-python) actions.
-
 ## Testing the Pluto web interface
 
 Install `requirements-hardware.txt`, system libiio and Chromium, then run:
@@ -88,9 +82,9 @@ calibration, then records a baseline with the targets muted and a capture with
 them enabled. It saves the IQ samples, timestamps, reference waveform and settings,
 and mutes both devices when it exits.
 Run `--help` for two-tone, broadband, native-TX and ADC diagnostic options.
-The optional native ADC snapshot tool specifically requires the unused reserved
-DMA region from the original Maia-derived test image. It is not needed by the
-radar simulator and cannot run against ordinary unreserved Linux memory.
+The optional native ADC snapshot tool requires a dedicated reserved DMA region
+with a device-tree layout recognized by `host/radio_capture.c`. It cannot use
+ordinary Linux memory and is not needed to run the simulator.
 
 `scripts/mimo_radar_pluto.py --host ADDRESS --pyespargos PATH` launches the existing
 MIMO demo with a compatible 20 MSa/s waveform and expanded range. It reads the

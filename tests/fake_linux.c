@@ -1,10 +1,21 @@
 /* Linked only into test binaries. Production binaries use radar_linux.c. */
+#define _POSIX_C_SOURCE 200809L
 #include "fake_device.h"
 #include "radar_linux.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 static fake_device fake;
+
+/* Keep startup tests independent of the CI runner's age and scheduling. */
+FILE *__real_fopen(const char *path, const char *mode);
+FILE *__wrap_fopen(const char *path, const char *mode) {
+    char *uptime = getenv("RADAR_TEST_UPTIME");
+    if (uptime && !strcmp(path, "/proc/uptime"))
+        return fmemopen(uptime, strlen(uptime), "r");
+    return __real_fopen(path, mode);
+}
+
 int radar_linux_open(radar_device *device, radar_linux *backend) {
     (void)backend;
     fake_init(&fake, device);

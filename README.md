@@ -14,7 +14,7 @@ You can drag targets in range and velocity, enter exact settings in the sidebar,
 or save a scene to use again later. Changes take effect as you drag. The interface
 also controls the carrier frequency and RX/TX gains.
 
-## Test setup
+## Connections
 
 The radar sends a waveform to Pluto's RX antenna. Pluto adds the configured
 echoes in its FPGA and sends them back through its TX antenna. One computer runs
@@ -25,8 +25,8 @@ machine.
 
 Install the ready-made firmware, then control the simulator from your browser.
 No build tools are needed. The firmware includes the simulator and its web
-interface and has been tested on Rev.B and Rev.C PlutoSDR hardware. Check the release
-notes for compatibility with your device.
+interface for Rev.B and Rev.C PlutoSDR hardware. Check the release notes for
+compatibility with your device.
 
 1. Download **`pluto.frm`** from this project's **Releases** section on GitHub.
    If it is supplied in a ZIP archive, extract it first.
@@ -53,7 +53,8 @@ away. Shifting its frequency makes it appear to move toward or away from the rad
 The optional movement setting changes its distance over time to match that velocity.
 
 Pluto takes a small amount of time to receive and retransmit a signal, even when
-no extra delay is selected. We measured **0.325 µs**, which looks like a target
+no extra delay is selected. The faster mode uses a **0.325 µs** reference delay,
+which looks like a target
 about **48.7 m** away to a radar that measures distance from the echo's round-trip
 time. This is the closest target the simulator can represent in its faster mode.
 The web interface includes this delay in the displayed distance and shades the
@@ -68,14 +69,14 @@ it can reflect a 160 MHz-wide radar signal.
 | --- | --- |
 | Analog bandwidth | 20 MHz |
 | Carrier frequency | 325–3800 MHz in the simulator. Pluto’s frequency-range hack can unlock 70–6000 MHz at the driver level (see below). |
-| Hardware | PlutoSDR, tested on Rev.B and Rev.C |
+| Hardware | PlutoSDR Rev.B and Rev.C |
 | Targets | Up to 4, with independent distance, velocity and echo strength |
 | Simulated distance | About 48.7 m to 1.97 km, or 117.1 m to 5.11 km in fallback mode |
 | Distance adjustment | 0.94 m steps, or 2.44 m in fallback mode |
 | Doppler adjustment | About 0.037 Hz steps, or 0.014 Hz in fallback mode. The UI converts these to radial velocity at the selected carrier. |
 | Target gain | −90 to 0 dB, applied separately to each echo |
 | Moving targets | Distance updated 100 times per second, in the distance steps above |
-| Receive-to-transmit delay | Measured at 0.325 µs, or 0.781 µs in fallback mode |
+| Reference receive-to-transmit delay | 0.325 µs, or 0.781 µs in fallback mode |
 | Internal sample rate | 160 MSa/s, or 61.44 MSa/s in fallback mode |
 
 Pluto’s [frequency-range hack](https://analogdevicesinc.github.io/system-level/tools/pluto/users/customizing/)
@@ -87,9 +88,8 @@ available here. Performance outside Pluto’s specified band is not guaranteed.
 ### Faster operation and automatic fallback
 
 The shorter minimum distance comes from running Pluto's radio interface at
-**160 MHz**, above its specified **61.44 MHz** limit. It worked on the Rev.B and Rev.C units
-we tested, but a successful test does not guarantee reliable overclocked operation
-on every device. The limit comes from the
+**160 MHz**, above its specified **61.44 MHz** limit. Operation at this rate
+depends on the individual device. The limit comes from the
 [AD9363 datasheet, pages 6–7](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9363.pdf).
 
 At startup, the simulator checks whether the faster setting works. If that check
@@ -99,10 +99,9 @@ interface reports the fallback and adjusts the shaded region automatically.
 If neither setting passes, transmission stays muted. Each reboot tries the faster
 setting again.
 
-The displayed minimum distances use our measurements as reference values. They
-are not an individual calibration of your Pluto. See the
-[measurement notes](docs/validation.md) for signal-quality results and the
-[clock comparison](docs/validation/clock-compromise.md) for timing measurements.
+The displayed minimum distances are reference values, not individual calibration
+of your Pluto. See [operating limits](docs/limitations.md) for details about range,
+antenna coupling and moving targets.
 
 ## Related work
 
@@ -156,10 +155,10 @@ make web
 
 You can use the simulator with the MIMO radar demo in `pyespargos` to see the
 four echoes on a range–velocity plot. Run the following from the `pyespargos`
-directory, replacing `172.16.0.241` with your ESPARGOS address:
+directory, replacing `192.168.1.100` with your ESPARGOS address:
 
 ```sh
-./demos/iq/mimo-radar/main.py -s 172.16.0.241 \
+./demos/iq/mimo-radar/main.py -s 192.168.1.100 \
   -o app.sample_rate=20 -o app.range_maximum=600
 ```
 
@@ -170,8 +169,7 @@ to include them. The simulator starts with a 600 m range and ±3 m/s window.
 
 Use the default gains as a starting point and adjust them for your antenna
 placement. A stationary target may disappear because the demo suppresses
-stationary reflections. Give it a nonzero velocity to make it visible. See the
-[example measurements](docs/validation/startup-and-defaults.md) for a working setup.
+stationary reflections. Give it a nonzero velocity to make it visible.
 
 ![Four simulated targets in the ESPARGOS MIMO radar demo](docs/assets/mimo-radar.png)
 
@@ -203,8 +201,7 @@ The result is `build/firmware/pluto.frm`, containing the FPGA, Linux system and
 web interface. Packaging uses the kernel and root filesystem from a compatible
 Pluto firmware image that you provide. Follow the
 [installation and recovery guide](docs/firmware.md) to back up your device,
-prepare that image and flash the result. Other base firmware versions and Pluto
-revisions still need testing.
+prepare that image and flash the result.
 
 Build outputs, firmware backups and raw captures stay in `build/` and are excluded
 from Git.
@@ -215,7 +212,7 @@ from Git.
 - [Installation, backups and recovery](docs/firmware.md)
 - [Signal processing and HTTP API](docs/architecture.md)
 - [FPGA registers](docs/registers.md)
-- [Measurements and limitations](docs/validation.md)
+- [Operating limits](docs/limitations.md)
 - [Running tests and ESPARGOS measurements](docs/testing.md)
 - [Contributing](CONTRIBUTING.md)
 - [Third-party licenses](THIRD_PARTY.md)
@@ -231,7 +228,7 @@ from Git.
 | `scripts/` | Build tools, deployment scripts and measurement utilities |
 | `tests/` | Simulation, analysis and browser tests |
 | `config/` | Example scenes and lab settings |
-| `docs/` | Guides, diagrams and measurement results |
+| `docs/` | User and developer guides, diagrams |
 
 ## AI use
 
