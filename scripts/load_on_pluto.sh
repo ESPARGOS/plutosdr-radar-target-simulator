@@ -2,7 +2,7 @@
 # Load a compatible Pluto image into RAM. All changes are volatile.
 set -eu
 [ -f /tmp/radar.bin ] && [ -x /tmp/rtsctl ]
-rm -f /tmp/radar-loaded /tmp/radar-failed
+rm -f /tmp/radar-loaded /tmp/radar-failed /tmp/radar-fallback
 if pidof radar-motion >/dev/null; then
  killall radar-motion
  sleep 1
@@ -41,10 +41,18 @@ for pair in 'cf_axi_dds 79024000.cf-ad9361-dds-core-lpc' 'cf_axi_adc 79020000.cf
  set -- $pair
  if [ ! -L "/sys/bus/platform/devices/$2/driver" ]; then echo "$2" > "/sys/bus/platform/drivers/$1/bind"; fi
 done
-if ! sh /tmp/radio_setup.sh || ! sh /tmp/radio_fast_setup.sh; then
+if ! sh /tmp/radio_setup.sh; then
  touch /tmp/radar-failed
- echo '160 MSa/s startup failed; targets muted; simulator unavailable'
+ echo 'Radio setup failed; targets muted; simulator unavailable'
  exit 1
+fi
+if ! sh /tmp/radio_fast_setup.sh; then
+ touch /tmp/radar-fallback
+ if ! sh /tmp/radio_fast_setup.sh 61440000; then
+  touch /tmp/radar-failed
+  echo 'Both radio profiles failed; targets muted; simulator unavailable'
+  exit 1
+ fi
 fi
 rm -f /tmp/radar-motion.ready
 nohup /tmp/radar-motion > /tmp/radar-motion.log 2>&1 < /dev/null &

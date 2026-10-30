@@ -23,3 +23,6 @@ __pycache__/
 /config/lab.local.json
 .DS_Store
 node_modules/
+
+# Files prepared for GitHub Releases
+/release/

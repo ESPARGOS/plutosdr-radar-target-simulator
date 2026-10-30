@@ -15,6 +15,12 @@
 #ifndef RADAR_FAILED_FILE
 #define RADAR_FAILED_FILE "/tmp/radar-failed"
 #endif
+#ifndef RADAR_FALLBACK_FILE
+#define RADAR_FALLBACK_FILE "/tmp/radar-fallback"
+#endif
+#ifndef RADAR_STARTUP_FILE
+#define RADAR_STARTUP_FILE "/tmp/radar-startup-state"
+#endif
 
 typedef enum { STATE, APPLY, MUTE, CARRIER, GAIN } operation;
 typedef struct {
@@ -32,6 +38,66 @@ static void error_response(int code, const char *message) {
     printf("Status: %d\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n"
            "{\"error\":\"%s\"}\n",
            code, message);
+}
+
+static void startup_response(void) {
+    bool failed = access(RADAR_FAILED_FILE, F_OK) == 0;
+    bool fallback = access(RADAR_FALLBACK_FILE, F_OK) == 0;
+    char stage[32] = "", extra;
+    double started = 0, changed = 0, now = 0;
+    FILE *file = fopen(RADAR_STARTUP_FILE, "r");
+    bool valid = false;
+    if (file) {
+        valid = fscanf(file, "%lf %lf %31s %c", &started, &changed, stage, &extra) == 3;
+        fclose(file);
+    }
+    file = fopen("/proc/uptime", "r");
+    if (file) {
+        valid = fscanf(file, "%lf", &now) == 1 && valid;
+        fclose(file);
+    } else
+        valid = false;
+    valid = valid && isfinite(started) && isfinite(changed) && started >= 0 && changed >= started &&
+            now >= changed;
+    const char *label = "Waiting for radar startup";
+    const struct {
+        const char *key, *label;
+    } stages[] = {
+        {"radio", "Configuring the radio"},
+        {"clocks", "Configuring the 160 MSa/s interface"},
+        {"fallback", "Restoring normal radio clocks and filters"},
+        {"rx_timing", "Calibrating RX interface timing"},
+        {"tx_timing", "Calibrating TX interface timing"},
+        {"joint_timing", "Checking shared RX/TX timing"},
+        {"tx_verify", "Checking TX integrity (5-second startup test)"},
+        {"rx_verify", "Checking RX integrity (1-second startup test)"},
+        {"movement", "Starting target movement service"},
+        {"ready", "Finishing radar startup"},
+    };
+    bool known = false;
+    for (unsigned i = 0; valid && i < sizeof stages / sizeof *stages; ++i) {
+        if (!strcmp(stage, stages[i].key)) {
+            label = stages[i].label;
+            known = true;
+            break;
+        }
+    }
+    printf("Status: 503\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n"
+           "{\"error\":\"%s%s\",\"startup\":{\"failed\":%s,\"elapsed_seconds\":",
+           failed     ? "Radar startup failed: "
+           : fallback ? "61.44 MHz fallback: "
+                      : "",
+           label, failed ? "true" : "false");
+    if (valid && known)
+        printf("%.0f", floor(now - started));
+    else
+        fputs("null", stdout);
+    fputs(",\"stage_elapsed_seconds\":", stdout);
+    if (valid && known)
+        printf("%.0f", floor(now - changed));
+    else
+        fputs("null", stdout);
+    printf(",\"fallback\":%s,\"expected_seconds\":30}}\n", fallback ? "true" : "false");
 }
 
 static int read_body(char *buffer, size_t capacity) {
@@ -167,10 +233,11 @@ static void state_response(radar_device *device, bool muted, const radar_motion 
                            rx_limits_ok && tx_limits_ok;
     uint32_t version = device->io->read_register(device->context, RADAR_REG_VERSION);
     bool clipped = device->io->read_register(device->context, RADAR_REG_CLIPPED) != 0;
-    double latency = version == 0x00010010 && rate == 160000000 && rx_bandwidth == 20000000 &&
-                             tx_bandwidth == 20000000
-                         ? .325
-                         : NAN;
+    bool standard = rate == 61440000 && read_number(device, "in_out_voltage_filter_fir_en") == 0;
+    bool fallback = standard && access(RADAR_FALLBACK_FILE, F_OK) == 0;
+    double latency = NAN;
+    if (version == 0x00010010 && rx_bandwidth == 20000000 && tx_bandwidth == 20000000)
+        latency = rate == 160000000 ? .325 : standard ? .78125 : NAN;
     printf("Content-Type: application/json\r\nCache-Control: no-store\r\n\r\n"
            "{\"mode\":\"hardware\",\"connected\":true,\"error\":null,\"pluto\":\"on-device\","
            "\"max_targets\":%d,\"latency_calibrated\":false,\"muted\":%s,\"clipped\":%s,"
@@ -178,6 +245,7 @@ static void state_response(radar_device *device, bool muted, const radar_motion 
            RADAR_TARGETS, muted ? "true" : "false", clipped ? "true" : "false",
            radio_available ? "true" : "false",
            radio_available ? "null" : "\"Some radio settings could not be read\"");
+    printf(",\"fallback\":%s", fallback ? "true" : "false");
     printf(",\"motion_available\":%s", radar_motion_available(motion) ? "true" : "false");
     json_number("motion_upper_samples", motion ? motion->upper : RADAR_MAX_DELAY);
     json_number("sample_rate_hz", fs);
@@ -220,11 +288,7 @@ int main(void) {
     if (parse_request(&input))
         return 0;
     if (access(RADAR_READY_FILE, F_OK)) {
-        error_response(
-            503,
-            access(RADAR_FAILED_FILE, F_OK)
-                ? "Radar startup is in progress or the FPGA is not loaded"
-                : "Radar startup failed; targets remain muted; check startup and movement logs");
+        startup_response();
         return 0;
     }
     radar_device device;

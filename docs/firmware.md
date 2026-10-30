@@ -2,7 +2,7 @@
 
 ## Compatibility
 
-The simulator runs on **Rev.B Pluto** hardware with the required AD9361 driver
+The simulator runs on **Rev.B and Rev.C Pluto** hardware with the required AD9361 driver
 controls. It does not need Maia SDR installed. The packager retains the supplied
 Pluto image's kernel, root filesystem, USB/network setup and device trees, then
 adds the radar FPGA, tools, startup script and web interface.
@@ -30,8 +30,8 @@ The following reads only `qspi-linux`; verify its partition name is `mtd3` on
 
 ```sh
 mkdir -p build/firmware
-ssh root@192.168.4.1 'cat /proc/mtd; cat /proc/device-tree/model'
-ssh root@192.168.4.1 'dd if=/dev/mtdblock3 bs=65536' > build/firmware/original-mtd3.bin
+ssh root@192.168.2.1 'cat /proc/mtd; cat /proc/device-tree/model'
+ssh root@192.168.2.1 'dd if=/dev/mtdblock3 bs=65536' > build/firmware/original-mtd3.bin
 python3 scripts/import_base_firmware.py build/firmware/original-mtd3.bin
 dumpimage -l build/firmware/original.itb
 ```
@@ -65,7 +65,7 @@ before boot, as in the base firmware. Other FIT components have hashes.
 
 ```sh
 make tools
-./scripts/deploy.sh 192.168.4.1
+./scripts/deploy.sh 192.168.2.1
 ```
 
 This loads FPGA RAM and configures the radio without changing flash. It stops
@@ -80,33 +80,37 @@ owns the radio before deployment.
 
 ## Writing the firmware to flash
 
-The updater writes the `qspi-linux` partition. It checks the Rev.B model,
+The updater writes the `qspi-linux` partition. It checks for a tested Rev.B/Rev.C model,
 partition name and checksum before muting the targets and writing the image.
 It then reads back the image to verify the write and updates U-Boot's `fit_size`.
 The matching `rtsctl` must already be available at `/tmp/rtsctl` (from a running
 radar image or volatile deployment).
 
 ```sh
-scp -O build/firmware/pluto.frm root@192.168.4.1:/tmp/radar.frm
-scp -O scripts/flash_on_pluto.sh root@192.168.4.1:/tmp/flash_on_pluto.sh
-ssh root@192.168.4.1 'sh /tmp/flash_on_pluto.sh'
+scp -O build/firmware/pluto.frm root@192.168.2.1:/tmp/radar.frm
+scp -O scripts/flash_on_pluto.sh root@192.168.2.1:/tmp/flash_on_pluto.sh
+ssh root@192.168.2.1 'sh /tmp/flash_on_pluto.sh'
 # Continue only after successful flash readback verification:
-ssh root@192.168.4.1 reboot
+ssh root@192.168.2.1 reboot
 ```
 
-Startup initially selects 2380 MHz, 20 MHz bandwidth, RX 0 dB and TX −60 dB.
+Startup selects 2385 MHz and 20 MHz bandwidth. RX stays at 0 dB and TX at
+−60 dB during calibration. After the checks pass, it selects the operating
+defaults of RX 25 dB and TX −35 dB, with targets still muted.
 It first scans all 256 clock/data delay pairs in each direction with all four
 FPGA target paths active and centers the common FPGA input delays. Candidate
-settings must pass a ten-second PN check;
-marginal candidates are rejected. Input taps must work for both RX and TX; a TX
+settings must pass a one-second PN check. Failed candidates are rejected. Input taps must work for both RX and TX; a TX
 failure triggers a retry with another measured-good RX tap. Startup centers the
-joint RX/TX input-delay window, checks TX for 60 seconds while updating all four
-targets, then rechecks RX. Calibration normally takes about two minutes; marginal
+joint RX/TX input-delay window, checks TX for five seconds while updating all four
+targets, then rechecks RX. Calibration normally takes about 30 seconds. Marginal
 timing candidates can take longer. Startup then starts the on-device movement service.
-Only a successful 160 MSa/s calibration and service startup enable
-the web controls. If it fails, targets remain muted and the API returns an error.
-The radio may restore its normal clocks for recovery, but that does not enable a
-reduced-rate simulator. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
+The web status shows the current stage and elapsed startup time. The FPGA is
+already loaded when the radio checks run.
+If the 160 MSa/s check fails, startup restores and validates the normal 61.44 MSa/s
+profile before starting the movement service. The UI identifies fallback mode
+and uses its 0.78125 µs reference latency (117.1 m minimum range). If either
+recovery or standard-profile validation fails, targets stay muted and the API
+returns an error. A reboot tries 160 MSa/s again. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
 on the Pluto to diagnose startup failures. Movement-service errors are recorded
 in `/tmp/radar-motion.log`. Scenes are not restored on reboot.
 

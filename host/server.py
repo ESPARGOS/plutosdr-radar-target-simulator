@@ -81,8 +81,8 @@ def main():
     )
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--sample-rate", type=float, default=20e6)
-    parser.add_argument("--frequency", type=float, default=2380e6)
+    parser.add_argument("--sample-rate", type=float, default=160e6)
+    parser.add_argument("--frequency", type=float, default=2385e6)
     args = parser.parse_args()
     args.pluto = None
     if not math.isfinite(args.sample_rate) or args.sample_rate <= 0:

@@ -27,8 +27,9 @@ The plot shows monostatic range, calculated as
 moving away, with `v = −c × Doppler / (2 × carrier)`. This matches the sign
 convention in the ESPARGOS MIMO demo.
 
-The UI includes the measured 0.325 µs hardware delay only when the FPGA version,
-sample rate and filter bandwidth match the measured configuration. For other
+The UI includes a measured reference hardware delay of 0.325 µs at 160 MSa/s
+or 0.78125 µs at 61.44 MSa/s when the FPGA version and radio settings match
+the corresponding measurement. For other
 configurations it shows range offsets, since the hardware delay is unknown.
 All echoes come from the same antenna, so they have the same apparent direction.
 
@@ -39,13 +40,21 @@ RX prefers a valid data-only delay before trying clock-delay alternatives. It
 then centers the common FPGA input-delay window, keeping data and frame timing
 coherent. TX selects an interior passing point, then measures the intersection
 of the RX and TX input-delay windows. The center of that joint window must pass
-a 60-second TX check with live four-target updates, followed by another RX check.
-Each candidate undergoes sustained PN checking,
+a five-second TX check with live four-target updates, followed by another RX check.
+Each candidate undergoes a one-second PN check,
 and a failed candidate is excluded before trying another. If an FPGA input tap
 passes RX but fails TX, startup tries the other measured RX-eye taps and checks
 both directions again. It tries a few promising TX settings per input tap first,
 then performs a full TX search if none passes. The checker uses the
 shared control lock so a simultaneous scene request cannot change its test load.
+
+If fast-mode validation fails, the init script requests the normal 61.44 MSa/s
+profile. It restores the driver-managed filters and clocks, validates the
+interface again and records `/tmp/radar-fallback`. The movement service accepts
+both operating rates and uses the reported rate in its trajectory calculations.
+The API exposes `fallback: true` and the 0.78125 µs reference latency in standard
+mode. The browser uses that latency for total range and the shaded exclusion
+region. A failure in both profiles leaves the controls unavailable.
 
 ## Moving targets
 
@@ -143,9 +152,9 @@ its in-memory state and the SSH adapter used by measurement scripts.
 `host/scene.py` shares the Python conversion rules. Golden payload fixtures
 check that Python and JavaScript agree, including negative and half-step rounding.
 
-Startup publishes readiness only after the 160 MSa/s timing calibration and PN
-checks pass. Until then, the CGI returns HTTP 503. A failed startup leaves targets
-muted and reports the failure; recovery clocks do not enable a slower simulator.
+Startup publishes readiness only after timing calibration and PN checks pass
+for either 160 MSa/s or the 61.44 MSa/s fallback. Until then, the CGI returns
+HTTP 503. If both profiles fail, targets stay muted and the API reports the failure.
 
 ## Scene files
 
@@ -157,3 +166,16 @@ files without a `version` field.
 
 Scenes store target settings only. Carrier frequency, radio gains and plot zoom
 are left as they are when you import a scene.
+
+## Startup status
+
+Before the simulator is ready, `/state` returns HTTP 503 with a readable `error`
+and a `startup` object containing `failed`, `elapsed_seconds`,
+`stage_elapsed_seconds`, `expected_seconds` and `fallback`. Elapsed values are null if no
+valid progress record is available. The expected 30 seconds is an estimate,
+not a deadline. Interface timing retries can take longer.
+
+The init script and timing checker atomically update `/tmp/radar-startup-state`
+with boot-relative timestamps and the current stage. The CGI reads that record
+without opening or locking the FPGA, so progress remains available throughout
+calibration. The browser displays it in the top-right status area.

@@ -83,3 +83,31 @@ The optional `make capture-tool` builds the lab-only native ADC snapshot utility
 The hashes of the tested firmware are in
 [the build manifest](validation/firmware-manifest.json). Rebuilding can produce
 different hashes because the tools include timestamps in some outputs.
+
+## Preparing a release
+
+After `make fpga` and preparing a compatible base image, run:
+
+```sh
+make release
+# Or select a different base image:
+make release RELEASE_BASE=build/firmware/my-pluto.itb
+```
+
+This builds the native tools, checks the FPGA build and packages fresh firmware.
+It then puts just the upload files in the gitignored `release/` directory:
+
+- `pluto.frm`: the complete drag-and-drop firmware update.
+- `firmware-manifest.json`: input versions and hashes for this firmware.
+- `radar-target-simulator-source.tar.gz`: current project sources, documentation
+  and license notices, including uncommitted edits and new non-ignored files.
+- `SHA256SUMS`: checksums for the other three files.
+
+Upload those four files as release assets. The source archive excludes ignored
+files such as device backups, build outputs, vendor downloads and local settings.
+Review new files before packaging, just as you would before committing them.
+
+The project source archive does not include the externally supplied Linux/base
+firmware sources or the compiler runtime sources. Retain the matching upstream
+source packages and notices required for distributing your chosen base firmware
+and toolchain, as described in [THIRD_PARTY.md](../THIRD_PARTY.md).

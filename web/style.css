@@ -79,6 +79,20 @@ h1 {
   text-align: right;
   overflow-wrap: anywhere;
 }
+.status.fallback {
+  color: #e9b35f;
+}
+.status.fallback:before {
+  background: #e9b35f;
+}
+.status-detail {
+  display: block;
+  font-size: 14px;
+  margin-top: 3px;
+}
+.status.starting:before {
+  background: var(--accent);
+}
 .status:before {
   content: "";
   display: inline-block;

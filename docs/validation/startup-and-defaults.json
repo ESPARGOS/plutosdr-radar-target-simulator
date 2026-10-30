@@ -1,0 +1,317 @@
+{
+  "date": "2026-10-30",
+  "pluto": "192.168.2.1",
+  "espargos": "172.16.0.241",
+  "frequency_hz": 2385000000,
+  "espargos_sample_rate_hz": 20000000,
+  "espargos_rx_gain_db": 25,
+  "espargos_tx_amplitude": 0.4,
+  "range_maximum_m": 600,
+  "gain_sweep": [
+    {
+      "rx": 0,
+      "tx": -60,
+      "gain": -18,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 130.0,
+          "velocity": 1.255844281487828,
+          "db": 3.5738608837127686
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.4186147604959427,
+          "db": 5.646226406097412
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 485.0,
+          "velocity": -1.331956056123454,
+          "db": 2.956615686416626
+        }
+      ],
+      "max_db": 17.2767333984375,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.259427542119864
+    },
+    {
+      "rx": 15,
+      "tx": -40,
+      "gain": -12,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 125.0,
+          "velocity": 1.446123718076893,
+          "db": 13.829015731811523
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.7611177463562595,
+          "db": 12.032238006591797
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 500.0,
+          "velocity": -1.7125149293015838,
+          "db": 11.461036682128906
+        }
+      ],
+      "max_db": 17.432600021362305,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.281727434235556
+    },
+    {
+      "rx": 25,
+      "tx": -35,
+      "gain": -12,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 125.0,
+          "velocity": 1.446123718076893,
+          "db": 25.45001220703125
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.7611177463562595,
+          "db": 25.88245391845703
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 500.0,
+          "velocity": -1.7125149293015838,
+          "db": 25.563430786132812
+        }
+      ],
+      "max_db": 25.88245391845703,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.233518305616768
+    },
+    {
+      "rx": 35,
+      "tx": -35,
+      "gain": -12,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 125.0,
+          "velocity": 1.446123718076893,
+          "db": 36.32563400268555
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.7611177463562595,
+          "db": 36.42915725708008
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 500.0,
+          "velocity": -1.7125149293015838,
+          "db": 36.188743591308594
+        }
+      ],
+      "max_db": 36.42915725708008,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.232687988321743
+    },
+    {
+      "rx": 25,
+      "tx": -25,
+      "gain": -12,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 125.0,
+          "velocity": 1.446123718076893,
+          "db": 36.02881622314453
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.7611177463562595,
+          "db": 36.027610778808594
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 500.0,
+          "velocity": -1.7125149293015838,
+          "db": 35.8267822265625
+        }
+      ],
+      "max_db": 36.02881622314453,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.266299747060634
+    },
+    {
+      "rx": 15,
+      "tx": -25,
+      "gain": -12,
+      "peaks": [
+        {
+          "expected_range": 123.664388925,
+          "expected_velocity": 1.4455401538784067,
+          "range": 125.0,
+          "velocity": 1.446123718076893,
+          "db": 25.96753692626953
+        },
+        {
+          "expected_range": 273.56061792500003,
+          "expected_velocity": -0.7541948628930818,
+          "range": 275.0,
+          "velocity": -0.7611177463562595,
+          "db": 25.878637313842773
+        },
+        {
+          "expected_range": 498.40496142500007,
+          "expected_velocity": -1.696938441509434,
+          "range": 500.0,
+          "velocity": -1.7125149293015838,
+          "db": 25.464021682739258
+        }
+      ],
+      "max_db": 25.96753692626953,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.242792422130751
+    }
+  ],
+  "four_target_repeats": [
+    {
+      "rx": 25,
+      "tx": -35,
+      "gain": -14,
+      "peaks": [
+        {
+          "expected_range": 159.2647433125,
+          "expected_velocity": -0.9,
+          "range": 160.0,
+          "velocity": -0.9133412956275114,
+          "db": 23.605426788330078
+        },
+        {
+          "expected_range": 258.570995025,
+          "expected_velocity": 0.9,
+          "range": 260.0,
+          "velocity": 0.9133412956275114,
+          "db": 23.063247680664062
+        },
+        {
+          "expected_range": 357.87724673750006,
+          "expected_velocity": -1.65,
+          "range": 360.0,
+          "velocity": -1.6364031546659579,
+          "db": 23.621849060058594
+        },
+        {
+          "expected_range": 456.24664701875,
+          "expected_velocity": 1.65,
+          "range": 460.0,
+          "velocity": 1.6364031546659579,
+          "db": 23.017223358154297
+        }
+      ],
+      "max_db": 23.621849060058594,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.240922797630199
+    },
+    {
+      "rx": 25,
+      "tx": -35,
+      "gain": -14,
+      "peaks": [
+        {
+          "expected_range": 159.2647433125,
+          "expected_velocity": -0.9,
+          "range": 160.0,
+          "velocity": -0.9133412956275114,
+          "db": 23.350608825683594
+        },
+        {
+          "expected_range": 258.570995025,
+          "expected_velocity": 0.9,
+          "range": 260.0,
+          "velocity": 0.9133412956275114,
+          "db": 23.622934341430664
+        },
+        {
+          "expected_range": 357.87724673750006,
+          "expected_velocity": -1.65,
+          "range": 360.0,
+          "velocity": -1.6364031546659579,
+          "db": 23.351327896118164
+        },
+        {
+          "expected_range": 456.24664701875,
+          "expected_velocity": 1.65,
+          "range": 460.0,
+          "velocity": 1.6364031546659579,
+          "db": 22.866504669189453
+        }
+      ],
+      "max_db": 23.622934341430664,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.2509676433474475
+    },
+    {
+      "rx": 25,
+      "tx": -35,
+      "gain": -14,
+      "peaks": [
+        {
+          "expected_range": 159.2647433125,
+          "expected_velocity": -0.9,
+          "range": 160.0,
+          "velocity": -0.9133412956275114,
+          "db": 23.104446411132812
+        },
+        {
+          "expected_range": 258.570995025,
+          "expected_velocity": 0.9,
+          "range": 260.0,
+          "velocity": 0.9133412956275114,
+          "db": 23.276700973510742
+        },
+        {
+          "expected_range": 357.87724673750006,
+          "expected_velocity": -1.65,
+          "range": 360.0,
+          "velocity": -1.6364031546659579,
+          "db": 23.184526443481445
+        },
+        {
+          "expected_range": 456.24664701875,
+          "expected_velocity": 1.65,
+          "range": 460.0,
+          "velocity": 1.6364031546659579,
+          "db": 22.32429313659668
+        }
+      ],
+      "max_db": 23.276700973510742,
+      "clipped": false,
+      "espargos_peak_dbfs": -5.24646373682701
+    }
+  ],
+  "startup_elapsed_seconds": 124,
+  "boot_to_ready_seconds": 135.7,
+  "firmware_sha256": "dbf4bb6a8e83ed246519caa31e91fbfe2d89b2934a1b7b22d2bb7213121488a1"
+}

@@ -212,3 +212,26 @@ test("an edit to one target does not overwrite another moving trajectory", async
   assert.equal(calls[2].positionEdits, 0);
   assert.equal(calls[2].phaseEdits, 0);
 });
+
+test("startup progress keeps controls disabled until a successful readback", async (t) => {
+  const startup = {
+    failed: false,
+    elapsed_seconds: 42,
+    stage_elapsed_seconds: 8,
+    expected_seconds: 120,
+  };
+  const error = Object.assign(new Error("Calibrating RX interface timing"), { startup });
+  const controller = setup(t, {
+    state: async () => {
+      throw error;
+    },
+  });
+  await controller.refresh();
+  assert.equal(controller.startup, startup);
+  assert.equal(controller.canEdit, false);
+  controller.api.state = async () => snapshot();
+  await controller.refresh();
+  assert.equal(controller.startup, null);
+  assert.equal(controller.error, "");
+  assert.equal(controller.canEdit, true);
+});

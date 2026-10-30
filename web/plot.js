@@ -8,9 +8,9 @@ export class TargetPlot {
     this.touches = new Map();
     this.pinch = null;
     this.popoverAxis = null;
-    this.rangeMaximum = 1500;
+    this.rangeMaximum = 600;
     this.windowInitialized = false;
-    this.velocityMaximum = 10;
+    this.velocityMaximum = 3;
     for (const axis of ["range", "velocity"]) {
       const label = $(axis + "-axis-title");
       label.addEventListener("wheel", (event) => this.zoom(event, axis), { passive: false });
@@ -133,7 +133,8 @@ export class TargetPlot {
       if (this.drag) this.endDrag({ pointerId: this.drag.id }, false);
       const [a, b] = [...this.touches.values()];
       this.pinch = {
-        distance: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)),
+        width: Math.max(20, Math.abs(a.x - b.x)),
+        height: Math.max(20, Math.abs(a.y - b.y)),
         range: this.rangeMaximum,
         velocity: this.velocityMaximum,
       };
@@ -148,9 +149,15 @@ export class TargetPlot {
     event.preventDefault();
     if (this.touches.size >= 2) {
       const [a, b] = [...this.touches.values()];
-      const factor = this.pinch.distance / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y));
-      this.setWindow("range", this.pinch.range * factor);
-      this.setWindow("velocity", this.pinch.velocity * factor);
+      // A small dead zone keeps an almost horizontal/vertical pinch stable.
+      this.setWindow(
+        "range",
+        (this.pinch.range * this.pinch.height) / Math.max(20, Math.abs(a.y - b.y)),
+      );
+      this.setWindow(
+        "velocity",
+        (this.pinch.velocity * this.pinch.width) / Math.max(20, Math.abs(a.x - b.x)),
+      );
       this.draw();
     }
     return true;

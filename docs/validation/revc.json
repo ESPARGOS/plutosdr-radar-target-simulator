@@ -1,0 +1,258 @@
+{
+  "date": "2026-10-30",
+  "hardware": "PlutoSDR Rev.C (Z7010/AD9363)",
+  "serial": "1044734c96050011f1ff0b0041984f5e4d",
+  "firmware_sha256": "47149e63161dc5be72c8f3e4af362d3397622f754a0227d8a067b585f6d89f4e",
+  "base_sha256": "916c3e1b1cc7512198f53a9e114b7fbca853963fe7a8594d0fe2e757b05fa858",
+  "boots": [
+    {
+      "trial": 1,
+      "elapsed": 45.75,
+      "sample_rate_hz": 160000000,
+      "fallback": false
+    },
+    {
+      "trial": 2,
+      "elapsed": 40.72,
+      "sample_rate_hz": 160000000,
+      "fallback": false
+    },
+    {
+      "trial": 3,
+      "elapsed": 39.7,
+      "sample_rate_hz": 160000000,
+      "fallback": false
+    }
+  ],
+  "zero_delay": {
+    "capture": "build/third-pluto/zero-delay.npz",
+    "windows": 611,
+    "duration_s": 7.995392,
+    "peak_adc": 77.298828125,
+    "targets": [
+      {
+        "programmed_delay_us": 0,
+        "programmed_doppler_hz": 17,
+        "measured_delay_us": 0.3375,
+        "measured_doppler_hz": 17.0,
+        "relative_peak_db": -16.67049988885129
+      }
+    ]
+  },
+  "mimo_demo": {
+    "passed": true,
+    "status": "Input coverage 100.0% \u00b7 16 plots/s \u00b7 0 missing windows \u00b7 Est. RX headroom 4.9 dB (peak -4.9 dBFS)",
+    "maximum_db": 17.567415237426758,
+    "frames": 21
+  },
+  "pn60": {
+    "sample_rate_hz": 61440000,
+    "seconds_per_test": 60.0,
+    "delay_registers": {
+      "6": 7,
+      "7": 195
+    },
+    "digital_io_control": 0,
+    "rx_iodelay": [
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15,
+      15
+    ],
+    "rx": {
+      "channel_status": [
+        0,
+        0
+      ],
+      "global_status": 1,
+      "acquisition": [],
+      "fpga_status": {
+        "signature": "RTS1",
+        "version": 65552,
+        "sample_rate_hz": 61440000,
+        "busy": false,
+        "clipped": false,
+        "mask": 15,
+        "targets": [
+          {
+            "delay_samples": 0,
+            "phase_increment": 305419896,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 1,
+            "phase_increment": 591751049,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 17,
+            "phase_increment": -1985229329,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 2047,
+            "phase_increment": -1737075662,
+            "gain_q15": 4096
+          }
+        ]
+      }
+    },
+    "tx_loopback": {
+      "channel_status": [
+        0,
+        0
+      ],
+      "global_status": 1,
+      "acquisition": [
+        [
+          0,
+          0
+        ]
+      ],
+      "fpga_status": {
+        "signature": "RTS1",
+        "version": 65552,
+        "sample_rate_hz": 61440000,
+        "busy": false,
+        "clipped": false,
+        "mask": 15,
+        "targets": [
+          {
+            "delay_samples": 0,
+            "phase_increment": 305419896,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 1,
+            "phase_increment": 591751049,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 17,
+            "phase_increment": -1985229329,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 2047,
+            "phase_increment": -1737075662,
+            "gain_q15": 4096
+          }
+        ]
+      }
+    }
+  },
+  "fast-pn60": {
+    "sample_rate_hz": 160000000,
+    "seconds_per_test": 60.0,
+    "delay_registers": {
+      "6": 14,
+      "7": 180
+    },
+    "digital_io_control": 68,
+    "rx_iodelay": [
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14,
+      14
+    ],
+    "rx": {
+      "channel_status": [
+        0,
+        0
+      ],
+      "global_status": 1,
+      "acquisition": [],
+      "fpga_status": {
+        "signature": "RTS1",
+        "version": 65552,
+        "sample_rate_hz": 160000000,
+        "busy": false,
+        "clipped": false,
+        "mask": 15,
+        "targets": [
+          {
+            "delay_samples": 0,
+            "phase_increment": 305419896,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 1,
+            "phase_increment": 591751049,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 17,
+            "phase_increment": -1985229329,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 2047,
+            "phase_increment": -1737075662,
+            "gain_q15": 4096
+          }
+        ]
+      }
+    },
+    "tx_loopback": {
+      "channel_status": [
+        0,
+        0
+      ],
+      "global_status": 1,
+      "acquisition": [
+        [
+          0,
+          0
+        ]
+      ],
+      "fpga_status": {
+        "signature": "RTS1",
+        "version": 65552,
+        "sample_rate_hz": 160000000,
+        "busy": false,
+        "clipped": false,
+        "mask": 15,
+        "targets": [
+          {
+            "delay_samples": 0,
+            "phase_increment": 305419896,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 1,
+            "phase_increment": 591751049,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 17,
+            "phase_increment": -1985229329,
+            "gain_q15": 4096
+          },
+          {
+            "delay_samples": 2047,
+            "phase_increment": -1737075662,
+            "gain_q15": 4096
+          }
+        ]
+      }
+    }
+  }
+}

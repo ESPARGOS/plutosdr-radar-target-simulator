@@ -11,6 +11,7 @@ make test-analysis    # synthetic analysis/quality estimators
 make test-native      # native controls and CGI failure cases (C compiler)
 make test-ui-model    # scene conversion and request queue (Node.js 18+)
 make test-provenance  # stale source/artifact rejection
+make test-release     # release checksums and source archive contents
 make test-web         # isolated preview server and Chromium
 ```
 
@@ -18,13 +19,13 @@ Or use `make test` for the HDL/control suite in the build container. The bit-exa
 reference model checks 15,000 clocks with random IQ, four independent paths, signed
 Doppler, memory wrap, saturation, sample gaps, configuration, mute and restart.
 AXI tests cover split write channels, strobes, backpressure and atomic CDC.
-There is also a test for the patched ADI interface. Abandoned FPGA variants and
-their tests have been removed; Git history retains them.
+There is also a test for the patched ADI interface.
 
 Native tests use the real control code with an injected register/IIO backend.
 They cover mute with missing radio attributes, busy timeouts, malformed payloads,
 failed or ignored writes, rollback and rollback failure. Startup tests inject
-radio and calibration failures and check that none marks the simulator ready.
+radio and calibration failures and check that only a passing fast or fallback
+profile marks the simulator ready.
 The CGI must return an error while startup is pending or has failed. Motion tests
 cover fractional accumulation, both reflection boundaries, long elapsed times,
 pause/resume, window changes and edits that preserve other trajectories. Browser-model tests
@@ -49,17 +50,18 @@ uses the official [checkout](https://github.com/actions/checkout) and
 Install `requirements-hardware.txt`, system libiio and Chromium, then run:
 
 ```sh
-python3 scripts/check_web.py --device http://192.168.4.1
+python3 scripts/check_web.py --device http://192.168.2.1
 ```
 
 The runner starts and stops an isolated browser, just like the preview test.
-The live test requires 160 MSa/s and the measured 0.325 µs latency profile. It
-checks the total-range axis and the shaded region below the minimum range.
+The live test expects 160 MSa/s by default. Set `RTS_EXPECTED_RATE=61440000`
+to test fallback mode instead. It checks the reported mode, total-range axis
+and shaded region below the minimum range.
 
 This test changes the targets, radio gains and carrier frequency. Export the current
 scene and record your radio settings first. It leaves targets muted, restores the
 gains it initially read, but does not restore the original scene/carrier. It
-checks the API and hardware readback, dragging, On/Off controls, zoom selection,
+checks the API and hardware readback, dragging, target visibility, axis-label zoom,
 scene import/export and desktop/mobile layouts. It also checks that the legend
 keeps its space and that clicking empty plot space leaves the scene alone.
 Screenshots are in `build/device-web-{desktop,mobile}.png`.

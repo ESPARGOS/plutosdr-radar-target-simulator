@@ -8,6 +8,7 @@ licenses or grant rights in AMD tools or unrelated upstream firmware.
 | Component | Origin | Terms / treatment |
 | --- | --- | --- |
 | ESPARGOS logo and favicon | `ESPARGOS/controller-firmware`, `main/web/` | Included under GPL-3.0-only with the owner's authorization |
+| ESPARGOS array drawing in the setup diagram | [ESPARGOS IQ radar drawing](https://espargos.net/docs/_images/iq-radar.svg) | Array geometry adapted under the owner's GPLv3 authorization |
 | UI visual reference | [ESPARGOS/esp-web-sdr](https://github.com/ESPARGOS/esp-web-sdr), controller UI | ESPARGOS dark/green styling; project UI code is GPL-3.0-only |
 | Carlito font embedded in `web/fonts.css` | Carlito Project Authors / Google Fonts, via ESPARGOS web SDR | SIL Open Font License 1.1; full copyright and license retained at the top of `fonts.css` |
 | ADI HDL | [analogdevicesinc/hdl](https://github.com/analogdevicesinc/hdl), revision `065c8f186ef87ff049d279ed5859ee8d97d91808` | Fetched, not vendored in Git. Per-module notices and upstream LICENSE files govern ADI code; patches retain upstream notices; the ADIBSD text is also in [LICENSES/ADIBSD.txt](LICENSES/ADIBSD.txt) |
@@ -22,5 +23,7 @@ and other materials required by the licenses of its components. A GitHub source
 checkout alone is not the corresponding source for an externally supplied Linux
 root filesystem. Record the exact base image and toolchain when preparing releases.
 
-The SVG FPGA diagram is original project documentation under GPL-3.0-only.
+The SVG diagrams are project documentation under GPL-3.0-only. The setup
+diagram includes the attributed ESPARGOS array geometry and screenshots captured
+from the simulator and ESPARGOS MIMO radar demo.
 No third-party web scripts or online font requests are needed by the device UI.

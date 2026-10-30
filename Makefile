@@ -49,3 +49,13 @@ test-ui-model:
 	node --test tests/*.test.js
 test-provenance:
 	python3 tests/test_build_provenance.py
+
+.PHONY: release test-release
+test-release:
+	mkdir -p build/tests
+	python3 tests/test_release.py
+
+RELEASE_BASE ?= build/firmware/original.itb
+release: tools
+	python3 scripts/package_firmware.py --base "$(RELEASE_BASE)" --output build/release-firmware
+	python3 scripts/package_release.py

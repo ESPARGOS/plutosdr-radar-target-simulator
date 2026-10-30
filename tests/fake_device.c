@@ -11,7 +11,8 @@ static const char *names[] = {"in_voltage_sampling_frequency",
                               "out_voltage0_hardwaregain",
                               "in_voltage0_hardwaregain_available",
                               "out_voltage0_hardwaregain_available",
-                              "in_voltage0_gain_control_mode"};
+                              "in_voltage0_gain_control_mode",
+                              "in_out_voltage_filter_fir_en"};
 static int index_of(const char *name) {
     for (unsigned i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
         if (!strcmp(name, names[i]))
@@ -72,9 +73,9 @@ void fake_init(fake_device *fake, radar_device *device) {
         fake->registers[RADAR_REG_TARGET_BASE + 4 * i] = i * 80;
         fake->registers[RADAR_REG_TARGET_BASE + 4 * i + 2] = 4096;
     }
-    const char *defaults[] = {"159999999",       "2380000000", "2380000000", "20000000",
-                              "20000000",        "35",         "-25",        "[-3 1 71]",
-                              "[-89.75 0.25 0]", "slow_attack"};
+    const char *defaults[] = {"159999999",       "2380000000",  "2380000000", "20000000",
+                              "20000000",        "35",          "-25",        "[-3 1 71]",
+                              "[-89.75 0.25 0]", "slow_attack", "0"};
     for (unsigned i = 0; i < sizeof(defaults) / sizeof(defaults[0]); ++i)
         snprintf(fake->values[i], sizeof(fake->values[i]), "%s", defaults[i]);
 }

@@ -2,7 +2,7 @@
 # Load only volatile FPGA RAM; a Pluto reboot restores its installed image.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-pluto_host="${1:-192.168.4.1}"
+pluto_host="${1:-192.168.2.1}"
 export SSHPASS="${PLUTO_PASSWORD:-analog}"
 ssh_opts=(-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$PWD/build/known_hosts" -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=3)
 python3 scripts/check_build.py

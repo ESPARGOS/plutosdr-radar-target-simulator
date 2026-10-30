@@ -5,7 +5,7 @@ from pathlib import Path
 import websocket
 
 root = Path(__file__).resolve().parents[1]
-base = os.environ.get("PLUTO_URL", "http://192.168.4.1").rstrip("/")
+base = os.environ.get("PLUTO_URL", "http://192.168.2.1").rstrip("/")
 
 
 def request(path, data=None, origin=None):
@@ -31,8 +31,10 @@ assert request("radio", b"100000000")[0] == 400
 assert request("radio", b"2380000000garbage")[0] == 400
 initial_radio = request("state")[1]
 assert initial_radio["connected"]
-assert abs(initial_radio["sample_rate_hz"] - 160000000) <= 100, initial_radio
-assert initial_radio.get("hardware_latency_us") == 0.325, initial_radio
+expected_rate = int(os.environ.get("RTS_EXPECTED_RATE", "160000000"))
+expected_latency = 0.78125 if expected_rate == 61440000 else 0.325
+assert abs(initial_radio["sample_rate_hz"] - expected_rate) <= 100, initial_radio
+assert initial_radio.get("hardware_latency_us") == expected_latency, initial_radio
 for payload in (
     b"rx nan",
     b"tx inf",
@@ -106,7 +108,24 @@ try:
     assert js(
         "document.querySelector('header').contains(document.getElementById('connection')) && !document.getElementById('feedback')"
     )
-    js("app.controller.error='';app.controller.notify()")
+    js(
+        "app.controller.startup={failed:false,elapsed_seconds:92,stage_elapsed_seconds:28};app.controller.error='Checking TX integrity (5-second startup test)';app.controller.notify()"
+    )
+    assert js(
+        "document.getElementById('connection').textContent.includes('92 s elapsed') && document.getElementById('connection').textContent.includes('28 s in this step') && document.getElementById('connection').classList.contains('starting')"
+    )
+    assert js(
+        "document.getElementById('connection').getBoundingClientRect().bottom <= document.querySelector('header').getBoundingClientRect().bottom"
+    )
+    js("app.controller.startup=null;app.controller.error='';app.controller.notify()")
+    if expected_rate == 61440000:
+        assert initial_radio["fallback"]
+        assert js(
+            "document.getElementById('connection').textContent.includes('61.44 MHz') && document.getElementById('connection').textContent.includes('117.1 m')"
+        )
+        assert js(
+            "document.getElementById('sample-rate').textContent.includes('fallback')"
+        )
     known_latency = initial_radio.get("hardware_latency_us") is not None
     assert js(
         "document.getElementById('fit').form===null && document.getElementById('rx-gain').form===null"
@@ -132,9 +151,9 @@ try:
     assert js("document.querySelector('.brand img').naturalWidth") > 0
     scene = json.loads((root / "config/four-targets.json").read_text())
     js(
-        "app.controller.targets="
+        "app.controller.replace("
         + json.dumps(scene["targets"])
-        + "; app.controller.selected=0; app.controller.revision++; app.renderEditor(); app.plot.draw();"
+        + "); app.controller.flush()"
     )
     # Small windows may hide targets, but never move velocity zero away from center.
     js(
@@ -219,7 +238,7 @@ try:
     # Continuous logarithmic zoom changes only the view and zooms only the hovered control.
     before_zoom = request("state")[1]["targets"]
     assert js(
-        "(()=>{app.plot.setWindow('range',123.456);app.plot.setWindow('velocity',2.345);app.plot.draw();return Math.abs(app.plot.windowValue('range')-123.456)<1e-6 && Math.abs(app.plot.windowValue('velocity')-2.345)<1e-6;})()"
+        "(()=>{app.plot.setWindow('range',223.456);app.plot.setWindow('velocity',2.345);app.plot.draw();return Math.abs(app.plot.windowValue('range')-223.456)<1e-6 && Math.abs(app.plot.windowValue('velocity')-2.345)<1e-6;})()"
     )
     for element, axis in (
         ("plot", None),
@@ -487,28 +506,41 @@ try:
     )
     before_pinch = request("state")[1]["targets"]
 
-    def contacts(spread):
+    def contacts(horizontal, vertical):
         return [
             dict(
                 id=i + 1,
-                x=touch_box["x"] + touch_box["w"] * (0.6 + direction * spread),
-                y=touch_box["y"] + touch_box["h"] * 0.6,
+                x=touch_box["x"] + touch_box["w"] * (0.6 + direction * horizontal),
+                y=touch_box["y"] + touch_box["h"] * (0.6 + direction * vertical),
             )
             for i, direction in enumerate((-1, 1))
         ]
 
-    call(
-        "Input.dispatchTouchEvent", dict(type="touchStart", touchPoints=contacts(0.10))
-    )
-    for spread in (0.12, 0.14, 0.16, 0.18):
+    # Horizontal, vertical and unequal diagonal pinches must scale independently.
+    for start, end, expected_range, expected_velocity in (
+        ((0.10, 0), (0.18, 0), 800, 10 / 1.8),
+        ((0, 0.10), (0, 0.18), 800 / 1.8, 10),
+        ((0.10, 0.10), (0.18, 0.14), 800 / 1.4, 10 / 1.8),
+    ):
+        js(
+            "app.plot.setWindow('range',800);app.plot.setWindow('velocity',10);app.plot.draw()"
+        )
         call(
             "Input.dispatchTouchEvent",
-            dict(type="touchMove", touchPoints=contacts(spread)),
+            dict(type="touchStart", touchPoints=contacts(*start)),
         )
-    call("Input.dispatchTouchEvent", dict(type="touchEnd", touchPoints=[]))
-    assert js(
-        "app.plot.rangeMaximum<600 && app.plot.velocityMaximum<8 && !app.plot.pinch && app.plot.touches.size===0"
-    )
+        for step in range(1, 5):
+            position = [a + (b - a) * step / 4 for a, b in zip(start, end)]
+            call(
+                "Input.dispatchTouchEvent",
+                dict(type="touchMove", touchPoints=contacts(*position)),
+            )
+        call("Input.dispatchTouchEvent", dict(type="touchEnd", touchPoints=[]))
+        assert js(
+            f"Math.abs(app.plot.rangeMaximum-{expected_range})<5 && "
+            f"Math.abs(app.plot.velocityMaximum-{expected_velocity})<0.1 && "
+            "!app.plot.pinch && app.plot.touches.size===0"
+        )
     assert request("state")[1]["targets"] == before_pinch
     js("app.plot.fit();window.scrollTo(0,0)")
     (root / "build/device-web-mobile.png").write_bytes(
@@ -535,12 +567,18 @@ try:
     js("document.getElementById('mute').click()")
     time.sleep(0.3)
     assert not any(t["enabled"] for t in request("state")[1]["targets"])
+    js("document.getElementById('unmute').click();app.controller.flush()")
+    unmuted = request("state")[1]["targets"]
+    assert unmuted and all(t["enabled"] for t in unmuted)
+    js("document.getElementById('mute').click()")
+    time.sleep(0.3)
+    assert not any(t["enabled"] for t in request("state")[1]["targets"])
     assert not errors, errors
     print(
         "PASS: target visibility toggle control, axis-label wheel zoom, slider popovers, pinch zoom, gain halos, on-device movement and header status, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
     )
 finally:
-    js("app.controller.stop()")
+    js("globalThis.app?.controller.stop()")
     call(
         "Input.dispatchMouseEvent",
         dict(type="mouseReleased", button="left", buttons=0, clickCount=1, x=0, y=0),

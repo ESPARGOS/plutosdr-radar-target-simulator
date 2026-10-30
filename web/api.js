@@ -24,7 +24,11 @@ export class RadarAPI {
         });
       const response = await this.fetcher(this.prefix + endpoint, options);
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      if (!response.ok) {
+        const error = new Error(data.error || `HTTP ${response.status}`);
+        error.startup = data.startup || null;
+        throw error;
+      }
       return data;
     } catch (error) {
       if (error.name === "AbortError") throw new Error("Controller request timed out");

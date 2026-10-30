@@ -4,7 +4,7 @@ set -eu
 image=/tmp/radar.frm
 [ -s "$image" ]
 grep -q 'qspi-linux' /proc/mtd
-grep -q 'Rev.B' /proc/device-tree/model
+grep -Eq 'Rev\.[BC] \(Z7010[-/]AD9363\)' /proc/device-tree/model
 expected=$(tail -c 33 "$image")
 actual=$(head -c -33 "$image" | md5sum | cut -d ' ' -f 1)
 [ "$actual" = "$expected" ] || { echo 'Firmware checksum failed'; exit 1; }

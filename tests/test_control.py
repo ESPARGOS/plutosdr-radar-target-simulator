@@ -37,7 +37,7 @@ class ControlTests(unittest.TestCase):
     def test_demo_mute(self):
         c = Controller(
             argparse.Namespace(
-                demo=True, pluto="192.168.4.1", sample_rate=20e6, frequency=2380e6
+                demo=True, pluto="192.168.2.1", sample_rate=20e6, frequency=2380e6
             )
         )
         c.apply({"targets": [dict(delay_us=1, doppler_hz=10, gain_db=-10)]})

@@ -152,7 +152,7 @@ p.add_argument(
     help="Diagnostic FPGA source 10: bypass targets and tag echo with TX LO offset (requires diagnostic bitstream)",
 )
 p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST", "192.168.1.100"))
-p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.4.1"))
+p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.2.1"))
 p.add_argument("--seconds", type=float, default=4)
 p.add_argument("--output", default="build/measurement.npz")
 p.add_argument("--scene")

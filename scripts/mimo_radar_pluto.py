@@ -15,11 +15,11 @@ p.add_argument(
     ),
 )
 p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST", "192.168.1.100"))
-p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.4.1"))
+p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.2.1"))
 p.add_argument(
     "--range-max",
     type=float,
-    default=900,
+    default=600,
     help="Displayed range in metres, including Pluto latency",
 )
 a, remaining = p.parse_known_args()
@@ -42,10 +42,6 @@ sys.argv = [
     "app.sample_rate=20",
     "-o",
     f"app.range_maximum={a.range_max}",
-    "-o",
-    "app.amplitude=0.08",
-    "-o",
-    "app.rx_gain=15",
     *remaining,
 ]
 runpy.run_path(str(demo / "main.py"), run_name="__main__")

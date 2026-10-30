@@ -8,6 +8,9 @@ static fake_device fake;
 int radar_linux_open(radar_device *device, radar_linux *backend) {
     (void)backend;
     fake_init(&fake, device);
+    const char *rate = getenv("RADAR_TEST_RATE");
+    if (rate)
+        snprintf(fake.values[0], sizeof(fake.values[0]), "%s", rate);
     fake.missing_radio = getenv("RADAR_TEST_NO_RADIO") != NULL;
     fake.stuck = getenv("RADAR_TEST_BUSY") != NULL;
     fake.fail_read = getenv("RADAR_TEST_FAIL_READ");

@@ -9,7 +9,7 @@ from pathlib import Path
 import adi
 
 p = argparse.ArgumentParser(description=__doc__)
-p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.4.1"))
+p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.2.1"))
 p.add_argument("--seconds", type=float, default=5)
 p.add_argument(
     "--stress-bank",

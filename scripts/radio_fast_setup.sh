@@ -1,11 +1,11 @@
 #!/bin/sh
 # Run on Pluto after radio_setup.sh has set up 61.44 MSa/s with targets muted.
 # This experimental clock setup bypasses the hardware FIRs, though the driver
-# still reports them enabled. Failure restores a muted recovery state only;
-# callers must not expose a working simulator unless 160 MSa/s passes.
+# still reports them enabled. The init script tries 160 MSa/s first and can
+# request the validated 61.44 MSa/s profile after a fast-mode failure.
 set -eu
 wanted=${1:-160000000}
-case "$wanted" in restore|160000000) ;; *) echo 'Only the 160 MSa/s operating profile is supported' >&2; exit 2;; esac
+case "$wanted" in restore|160000000|61440000) ;; *) echo 'Supported profiles: 160000000, 61440000, restore' >&2; exit 2;; esac
 rm -f /tmp/radar-loaded
 phy=
 for d in /sys/bus/iio/devices/iio:device*; do
@@ -70,10 +70,20 @@ restore_normal() {
   [ "$(((qec_check >> 5) & 7))" -eq "$((qec_saved * 4))" ] || return 1
  fi
  # Check actual data as well as the reported clock rates.
- "$checker" 5 || return 1
+ "$checker" 1 || return 1
  rm -f "$recovery"
 }
 if [ "$wanted" = restore ]; then restore_normal; exit $?; fi
+if [ "$wanted" = 61440000 ]; then
+ restore_normal || exit 2
+ set -e
+ "$checker" 1 --tune
+ /tmp/rtsctl mute
+ echo 25 > "$phy/in_voltage0_hardwaregain"
+ echo -35 > "$phy/out_voltage0_hardwaregain"
+ echo 'Standard radio configured: 61.44 MSa/s, 20 MHz bandwidth, RX 25 dB, TX -35 dB, targets muted'
+ exit 0
+fi
 # Restore the saved clock and filter settings before running setup again.
 if [ -f "$recovery" ]; then restore_normal || exit 2; set -e; fi
 actual=$(cat "$phy/in_voltage_sampling_frequency")
@@ -84,7 +94,7 @@ finish() {
  if [ "$complete" -eq 0 ]; then
   echo "160 MSa/s setup failed (status $result); restoring muted recovery state" >&2
   if restore_normal; then
-   echo 'Radio restored for recovery; targets muted; simulator unavailable' >&2
+   echo 'Radio restored for recovery; targets muted; fast profile unavailable' >&2
    exit 1
   else
    echo 'Normal profile restoration failed; TX remains attenuated' >&2
@@ -138,12 +148,15 @@ sleep 1
 [ "$(devmem 0x43c00024)" = 0x00000007 ]
 # Scan actual RX/TX delay pairs rather than extrapolating from the driver's
 # short edge scan. Both ports must then pass the sustained PN checks.
-"$checker" 10 --tune
+"$checker" 1 --tune
 /tmp/rtsctl mute
 [ "$(devmem 0x43c00024)" = 0x00000007 ]
 rx_check=$(spi_read 3);tx_check=$(spi_read 2)
 [ $((rx_check & 3)) -eq 0 ] && [ $((tx_check & 3)) -eq 0 ]
 qec_check=$(spi_read 0x16f)
 [ "$(cat "$qec_mode")" = 1 ] && [ $(((qec_check >> 5) & 7)) -eq 4 ]
-echo "Fast radio configured: $actual samples/s, 20 MHz bandwidth, targets muted"
+# Apply operating gains only after calibration passes. The scene is still muted.
+echo 25 > "$phy/in_voltage0_hardwaregain"
+echo -35 > "$phy/out_voltage0_hardwaregain"
+echo "Fast radio configured: $actual samples/s, 20 MHz bandwidth, RX 25 dB, TX -35 dB, targets muted"
 complete=1

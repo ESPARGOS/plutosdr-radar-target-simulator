@@ -3,7 +3,7 @@
 The guides in `docs/` describe the current design. Earlier experiments remain
 in Git history.
 
-For software changes, run `make test-native test-ui-model test-provenance`,
+For software changes, run `make test-native test-ui-model test-provenance test-release`,
 `make test-local test-analysis` and the relevant browser test. You can use `make test` to run the HDL tests in Docker instead.
 [The testing guide](docs/testing.md) explains the dependencies and hardware tests.
 Save your scene and radio settings before running tests against a Pluto; those

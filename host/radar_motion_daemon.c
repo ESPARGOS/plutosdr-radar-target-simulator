@@ -58,7 +58,7 @@ int main(void) {
         after = before;
         double now = radar_motion_now(), carrier;
         unsigned long rate = radar_sample_rate(&device);
-        if (rate != 160000000 ||
+        if ((rate != 160000000 && rate != 61440000) ||
             radar_read_number(&device, "out_altvoltage0_RX_LO_frequency", &carrier)) {
             device.error = "Motion clock or carrier unavailable";
             failed = 1;

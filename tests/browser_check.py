@@ -74,7 +74,7 @@ js(
     "app.plot.select(0);document.getElementById('range').value=(sceneModel.latency(app.controller.state)+7.123)*sceneModel.METERS_PER_US;document.getElementById('range').dispatchEvent(new Event('change'));document.getElementById('doppler').value=-31.25;document.getElementById('doppler').dispatchEvent(new Event('change'))"
 )
 time.sleep(0.5)
-assert abs(js("app.controller.targets[0].delay_us") - 7.1) < 1e-7
+assert abs(js("app.controller.targets[0].delay_us") - 7.125) < 1e-7
 assert js("document.getElementById('visible').getAttribute('aria-pressed')==='true'")
 js("document.getElementById('visible').click()")
 time.sleep(0.3)
@@ -126,6 +126,15 @@ assert js("document.documentElement.scrollWidth <= window.innerWidth")
         )["data"]
     )
 )
+js("document.getElementById('mute').click()")
+time.sleep(0.3)
+assert js("app.controller.targets.every(t=>!t.enabled)")
+js("document.getElementById('unmute').click()")
+js("app.controller.flush()")
+assert js(
+    "app.controller.targets.length > 0 && app.controller.targets.every(t=>t.enabled)"
+)
+assert js("document.getElementById('unmute').disabled")
 js("document.getElementById('mute').click()")
 time.sleep(0.3)
 assert js("app.controller.targets.every(t=>!t.enabled)")

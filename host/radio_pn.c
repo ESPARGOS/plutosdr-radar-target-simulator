@@ -13,10 +13,34 @@
 #include <sys/mman.h>
 #include <time.h>
 #include <unistd.h>
-static volatile sig_atomic_t interrupted;
+static volatile sig_atomic_t interrupted, timed_out;
 static void stop_test(int signum) {
-    (void)signum;
+    timed_out = signum == SIGALRM;
     interrupted = 1;
+}
+// The service creates this record. Standalone diagnostics do not create one.
+static void startup_stage(const char *stage) {
+    double started, now;
+    FILE *file = fopen("/tmp/radar-startup-state", "r");
+    if (!file)
+        return;
+    int valid = fscanf(file, "%lf", &started);
+    fclose(file);
+    if (valid != 1)
+        return;
+    file = fopen("/proc/uptime", "r");
+    if (!file)
+        return;
+    valid = fscanf(file, "%lf", &now);
+    fclose(file);
+    if (valid != 1)
+        return;
+    file = fopen("/tmp/radar-startup-state.new", "w");
+    if (!file)
+        return;
+    fprintf(file, "%.2f %.2f %s\n", started, now, stage);
+    if (!fclose(file))
+        rename("/tmp/radar-startup-state.new", "/tmp/radar-startup-state");
 }
 static char phy[256], debug[256];
 static int attr(const char *base, const char *name, const char *value) {
@@ -222,6 +246,7 @@ static int center_joint_inputs(volatile uint32_t *rx, uint32_t candidates) {
 int main(int argc, char **argv) {
     signal(SIGINT, stop_test);
     signal(SIGTERM, stop_test);
+    signal(SIGALRM, stop_test);
     if (argc > 3 || (argc == 3 && strcmp(argv[2], "--tune"))) {
         fputs("usage: radio-pn [seconds [--tune]]\n", stderr);
         return 2;
@@ -242,6 +267,12 @@ int main(int argc, char **argv) {
     }
     if (!debug[0] || attr(phy, "out_voltage0_hardwaregain", "-60"))
         return 2;
+    // Bound startup retries. Longer, explicitly requested diagnostics are not timed out.
+    if (tune && seconds == 1) {
+        char rate[64] = "0";
+        readattr(phy, "in_voltage_sampling_frequency", rate, sizeof rate);
+        alarm(strtoul(rate, NULL, 10) > 100000000 ? 60 : 90);
+    }
     int initial_rx_delay = regread(6), initial_tx_delay = regread(7);
     if (initial_rx_delay < 0 || initial_tx_delay < 0)
         return 2;
@@ -320,6 +351,8 @@ int main(int argc, char **argv) {
                 break;
             }
             usleep(100000);
+            if (tune)
+                startup_stage(mode ? "tx_timing" : stage == 2 ? "rx_verify" : "rx_timing");
             if (tune && stage == 0 && !combination) {
                 if (tune_port(rx, 6, seconds, 256)) {
                     failed = 1;
@@ -337,6 +370,8 @@ int main(int argc, char **argv) {
                 failed = 1;
                 break;
             }
+            if (tune && mode)
+                startup_stage("joint_timing");
             if (tune && mode && center_joint_inputs(rx, all_inputs)) {
                 failed = 1;
                 break;
@@ -374,7 +409,9 @@ int main(int argc, char **argv) {
             // Sticky checker errors are cleared once, never during the measured interval.
             rx[0x404 / 4] = 7;
             rx[0x444 / 4] = 7;
-            unsigned verification = tune && mode ? 60 : seconds;
+            if (tune)
+                startup_stage(mode ? "tx_verify" : "rx_verify");
+            unsigned verification = tune && mode && seconds < 5 ? 5 : seconds;
             bool live_updates = tune && mode;
             unsigned ticks_per_second = live_updates ? 100 : 10;
             radar_scene exercise;
@@ -437,6 +474,11 @@ int main(int argc, char **argv) {
                exhaustive ? " (full TX search)" : "");
         fflush(stdout);
     }
+    alarm(0);
+    if (interrupted)
+        failed = 1;
+    if (timed_out)
+        fputs("Timing calibration timed out; restoring interface settings\n", stderr);
     if (failed && tune) {
         for (unsigned lane = 0; lane < 13; ++lane)
             rx[(0x800 + lane * 4) / 4] = original_lanes[lane];

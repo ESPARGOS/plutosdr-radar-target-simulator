@@ -26,7 +26,8 @@ def request(path, body=None):
 
 
 state = request("state")
-assert state["motion_available"] and state["sample_rate_hz"] == 160000000
+expected_rate = int(os.environ.get("RTS_EXPECTED_RATE", "160000000"))
+assert state["motion_available"] and state["sample_rate_hz"] == expected_rate
 rate, carrier = state["sample_rate_hz"], state["frequency_hz"]
 phases = [
     round(-v * 2 * carrier / 299792458 / rate * 2**32) for v in (75, 125, -175, -225)
@@ -36,7 +37,7 @@ report = {"samples": []}
 try:
     request("apply", "motion 15 15 15 100\n15\n" + "\n".join(rows))
     start = time.monotonic()
-    while time.monotonic() - start < 5:
+    while time.monotonic() - start < 5 * 160000000 / rate:
         snapshot = request("state")
         targets = snapshot["targets"]
         assert len(targets) == 4 and all(

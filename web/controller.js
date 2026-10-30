@@ -14,6 +14,7 @@ export class SceneController {
     this.dragging = false;
     this.operation = null;
     this.error = "";
+    this.startup = null;
     this.listeners = new Set();
     this.queue = Promise.resolve();
     this.timer = null;
@@ -52,6 +53,7 @@ export class SceneController {
 
   accept(snapshot, replaceScene = false) {
     this.state = snapshot;
+    this.startup = null;
     if (
       replaceScene &&
       snapshot.targets?.every(
@@ -219,6 +221,7 @@ export class SceneController {
         );
       } catch (error) {
         this.error = error.message;
+        this.startup = error.startup || null;
         if (this.state) this.state = { ...this.state, connected: false };
         this.notify();
       }

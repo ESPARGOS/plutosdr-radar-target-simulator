@@ -51,8 +51,10 @@ to those files, which are not included in the repository.
 ## Limits
 
 - 160 MSa/s is outside the AD9363's specified CMOS clock range. The measurements
-  cover one device; this clock rate is not supported by the manufacturer.
-- Radio fallback is 61.44 MSa/s. It does not inherit the 0.325 µs latency estimate.
+  above describe the original Rev.B device. Separate Rev.B and Rev.C startup
+  checks are linked below. This clock rate is not supported by the manufacturer.
+- Automatic fallback uses 61.44 MSa/s with normal filters and a measured
+  0.781 µs reference latency (117.1 m minimum range). See [the clock comparison](validation/clock-compromise.md).
 - Do not independently change sample rate/FIR settings in the fast profile:
   the driver FIR cache and actual hardware bypass state differ. On Pluto,
   `radar-radio-fast restore` first returns to the normal muted profile.
@@ -75,3 +77,9 @@ controls, browser and volatile testing on a second Pluto.
 
 The [moving-target check](validation/moving-targets.md) covers the on-device ARM
 movement service, reflected trajectories and the subsequent UI layout changes.
+
+[Startup feedback and default gains](validation/startup-and-defaults.md) documents
+the four-target MIMO radar visibility check and the operating defaults.
+
+[Rev.C testing](validation/revc.md) covers fast-mode recovery, three firmware
+boots, sustained interface checks and RF measurements on a third Pluto.

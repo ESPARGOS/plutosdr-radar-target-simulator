@@ -47,14 +47,20 @@ function renderRadio() {
   const state = controller.state;
   $("carrier-form").hidden = !onDevice;
   $("radio-gains").hidden = !onDevice;
-  $("carrier-input").disabled = Boolean(controller.operation);
-  if (!state) return;
+  $("carrier-input").disabled = !state?.connected || Boolean(controller.operation);
+  if (!state) {
+    $("rx-gain").disabled = $("tx-gain").disabled = true;
+    return;
+  }
   if (!carrierDirty && Number.isFinite(state.frequency_hz))
     setField("carrier-input", Number((state.frequency_hz / 1e6).toFixed(6)));
   for (const channel of ["rx", "tx"]) {
     const field = $(channel + "-gain");
     field.disabled =
-      pendingGains.has(channel) || state.radio_available === false || Boolean(controller.operation);
+      pendingGains.has(channel) ||
+      !state.connected ||
+      state.radio_available === false ||
+      Boolean(controller.operation);
     if (!pendingGains.has(channel) && Number.isFinite(state[channel + "_gain_db"])) {
       setField(channel + "-gain", state[channel + "_gain_db"]);
     }
@@ -65,7 +71,7 @@ function renderRadio() {
     }
   }
   $("sample-rate").textContent = Number.isFinite(state.sample_rate_hz)
-    ? `Sample rate ${format(state.sample_rate_hz / 1e6)} MSa/s`
+    ? `Sample rate ${format(state.sample_rate_hz / 1e6)} MSa/s${state.fallback ? " (fallback)" : ""}`
     : "Sample clock unavailable";
   $("sample-rate").title = "Digital processing rate, not RF bandwidth";
   const bandwidth =
@@ -108,12 +114,48 @@ function render() {
         : state?.mode === "demo"
           ? "Demo · no RF output"
           : state?.connected
-            ? "Pluto connected"
+            ? state.fallback
+              ? "Running at 61.44 MHz (fallback)"
+              : "Pluto connected"
             : "Controller unavailable");
+  const startup = controller.startup;
+  if (startup) {
+    const detail = document.createElement("span");
+    detail.className = "status-detail";
+    const elapsed = Number.isFinite(startup.elapsed_seconds)
+      ? `${startup.elapsed_seconds} s elapsed. `
+      : "";
+    detail.textContent = startup.failed
+      ? `${elapsed}Targets muted. Check the startup log on Pluto.`
+      : `${elapsed}${Number.isFinite(startup.stage_elapsed_seconds) ? `${startup.stage_elapsed_seconds} s in this step. ` : ""}${startup.fallback ? "160 MHz calibration failed." : "Usually about 30 s total."}`;
+    $("connection").append(detail);
+    $("connection").title = startup.failed
+      ? "Logs: /tmp/radar-startup.log and /tmp/radar-motion.log"
+      : "The FPGA loads during boot. Radio timing calibration and integrity checks take most of the startup time. Timing retries can take longer.";
+  } else {
+    $("connection").removeAttribute("title");
+    if (state?.fallback && !warning) {
+      const detail = document.createElement("span");
+      detail.className = "status-detail";
+      detail.textContent = `160 MHz calibration failed. Minimum range ${format(state.hardware_latency_us * METERS_PER_US, 1)} m.`;
+      $("connection").append(detail);
+    }
+  }
   $("connection").className =
     "status " +
-    (warning ? "error" : state?.mode === "demo" ? "demo" : state?.connected ? "online" : "");
+    (startup && !startup.failed
+      ? "starting"
+      : warning
+        ? "error"
+        : state?.fallback
+          ? "fallback"
+          : state?.mode === "demo"
+            ? "demo"
+            : state?.connected
+              ? "online"
+              : "");
   $("mute").disabled = Boolean(controller.operation);
+  $("unmute").disabled = !controller.canEdit || !controller.targets.some((t) => !t.enabled);
 }
 
 function showError(error) {
@@ -131,7 +173,7 @@ $("add").onclick = () =>
     targets.push({
       delay_us: plot.rangeSpan() * (0.2 + 0.18 * targets.length),
       doppler_hz: plot.dopplerLimit() * [0.3, -0.3, 0.55, -0.55][targets.length],
-      gain_db: -18,
+      gain_db: -14,
       enabled: true,
     });
     controller.selected = targets.length - 1;
@@ -175,6 +217,10 @@ $("remove").onclick = () =>
   controller.edit((targets) => {
     targets.splice(controller.selected, 1);
     controller.selected = Math.min(controller.selected, targets.length - 1);
+  });
+$("unmute").onclick = () =>
+  controller.edit((targets) => {
+    for (const target of targets) target.enabled = true;
   });
 $("mute").onclick = () => {
   void controller.mute();
