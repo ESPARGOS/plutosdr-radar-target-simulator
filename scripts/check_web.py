@@ -21,16 +21,29 @@ def free_port():
         return sock.getsockname()[1]
 
 
-def ready(url, process):
+def startup_error(message, log_path):
+    if log_path and log_path.exists():
+        # Include the tail so CI failures remain readable without local log access.
+        with log_path.open("rb") as log:
+            log.seek(max(0, log_path.stat().st_size - 4096))
+            output = log.read().decode(errors="replace").strip()
+        if output:
+            message += f"\n{log_path.name}:\n{output}"
+    return RuntimeError(message)
+
+
+def ready(url, process, log_path=None):
     for _ in range(100):
         if process.poll() is not None:
-            raise RuntimeError(f"Test service exited: {url}; see build/tests logs")
+            raise startup_error(
+                f"Test service exited with code {process.returncode}: {url}", log_path
+            )
         try:
             with urllib.request.urlopen(url, timeout=1):
                 return
         except OSError:
             time.sleep(0.1)
-    raise RuntimeError(f"Timed out waiting for {url}")
+    raise startup_error(f"Timed out waiting for {url}", log_path)
 
 
 def main():
@@ -80,7 +93,7 @@ def main():
                         stderr=subprocess.STDOUT,
                     )
                     processes.append(server)
-                    ready(base + "/api/state", server)
+                    ready(base + "/api/state", server, logs / "preview-server.log")
                 browser_process = subprocess.Popen(
                     [
                         browser,
@@ -97,7 +110,11 @@ def main():
                     stderr=subprocess.STDOUT,
                 )
                 processes.append(browser_process)
-                ready(f"http://localhost:{debug_port}/json", browser_process)
+                ready(
+                    f"http://localhost:{debug_port}/json",
+                    browser_process,
+                    logs / "preview-browser.log",
+                )
                 subprocess.run(
                     [
                         sys.executable,

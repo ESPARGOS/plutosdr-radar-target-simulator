@@ -22,6 +22,7 @@ jobs:
       - run: python -m compileall -q host scripts tests
       - run: for f in scripts/*.sh tests/run.sh; do bash -n "$f"; done
       - name: Preview UI (no hardware)
-        run: make test-web
+        # Chrome needs a short path for its temporary Unix socket.
+        run: RTS_SCRATCH_DIR="$RUNNER_TEMP/rts" make test-web
         env:
           CHROMIUM_BIN: /usr/bin/google-chrome

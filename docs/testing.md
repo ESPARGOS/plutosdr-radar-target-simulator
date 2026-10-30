@@ -35,7 +35,11 @@ Shared fixtures check the exact scene payload in both Python and JavaScript.
 `make test-web` starts and stops its own local preview and headless Chromium,
 uses temporary profiles under `RTS_SCRATCH_DIR` (default `build/scratch`), and
 writes logs/screenshots under `build/`. Set `CHROMIUM_BIN` if Chromium is not on
-PATH. The test browser runs with its sandbox disabled and visits only the local
+PATH. Use a short absolute scratch path: Chrome creates a Unix socket there,
+and deeply nested paths can exceed Linux’s socket path-length limit. CI uses
+GitHub’s runner temporary directory for this reason.
+
+The test browser runs with its sandbox disabled and visits only the local
 preview. It does not connect to Pluto or ESPARGOS. Python syntax and shell
 syntax checks also run in `.github/workflows/tests.yml`.
 
