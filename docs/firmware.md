@@ -3,7 +3,7 @@
 ## Compatibility
 
 The simulator runs on **Rev.B and Rev.C Pluto** hardware with the required AD9361 driver
-controls. It does not need Maia SDR installed. The packager retains the supplied
+controls. It does not need Maia SDR installed. The packager preserves the supplied
 Pluto image's kernel, root filesystem, USB/network setup and device trees, then
 adds the radar FPGA, tools, startup script and web interface.
 
@@ -13,8 +13,7 @@ disabled only if they exist. Those compatibility steps are not runtime
 dependencies. The development container's `maia-sdr` name identifies its publisher.
 
 The driver must provide the IIO/debug attributes used by `radio_fast_setup.sh`,
-including `adi,qec-tracking-slow-mode-enable`. The optional ADC snapshot utility
-has a separate reserved-memory requirement; the simulator itself does not.
+including `adi,qec-tracking-slow-mode-enable`.
 Compatibility with other Pluto revisions and driver versions is not guaranteed.
 
 The expected FIT image order is rev-a DTB, rev-b DTB, rev-c DTB, FPGA, kernel,
@@ -70,8 +69,8 @@ make tools
 
 This loads FPGA RAM and configures the radio without changing flash. It stops
 known radio applications, temporarily rebinds radio drivers, preserves the USB gadget and
-leaves targets muted. Reboot restores the installed image. This command copies
-the FPGA and radio tools; use the firmware image to install the web interface.
+leaves targets muted. The matching control tools and web interface are copied
+into RAM as well. Reboot restores the installed image and its web interface.
 The loader handles DICHASUS's `maia-reftx` process and Maia's HTTP service when
 present. It moves DICHASUS's init script out of the init directory in RAM because
 that script also starts its transmitter when called with `stop`, blocking reboot.
@@ -97,22 +96,27 @@ ssh root@192.168.2.1 reboot
 Startup selects 2385 MHz and 20 MHz bandwidth. RX stays at 0 dB and TX at
 −60 dB during calibration. After the checks pass, it selects the operating
 defaults of RX 25 dB and TX −35 dB, with targets still muted.
-It first scans all 256 clock/data delay pairs in each direction with all four
-FPGA target paths active and centers the common FPGA input delays. Candidate
-settings must pass a one-second PN check. Failed candidates are rejected. Input taps must work for both RX and TX; a TX
-failure triggers a retry with another measured-good RX tap. Startup centers the
-joint RX/TX input-delay window, checks TX for five seconds while updating all four
-targets, then rechecks RX. Calibration normally takes about 30 seconds. Marginal
-timing candidates can take longer. Startup then starts the on-device movement service.
+At the overclocked rate, calibration first searches the transceiver's RX data
+delay together with the FPGA input delays, keeping DATA_CLK fixed. This avoids
+rejecting a usable combination just because the initial FPGA delay was poor.
+If that search fails, it scans the full RX clock/data grid. TX calibration scans
+all 256 clock/data pairs. Candidate settings pass a one-second PN check, and
+the joint RX/TX input-delay window is checked while updating all four targets.
+A final five-second TX check and RX recheck qualify the selected setting.
+Calibration normally takes about 35 seconds in overclocked mode. Marginal
+candidates and fallback can take longer. The controls become available after these checks.
 The web status shows the current stage and elapsed startup time. The FPGA is
 already loaded when the radio checks run.
 If the 160 MSa/s check fails, startup restores and validates the normal 61.44 MSa/s
-profile before starting the movement service. The UI identifies fallback mode
-and uses its 0.78125 µs reference latency (117.1 m minimum range). If either
+profile before enabling the controls. The UI identifies fallback mode
+and uses its 1.090625 µs reference latency (163.5 m minimum range). If either
 recovery or standard-profile validation fails, targets stay muted and the API
-returns an error. A reboot tries 160 MSa/s again. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
-on the Pluto to diagnose startup failures. Movement-service errors are recorded
-in `/tmp/radar-motion.log`. Scenes are not restored on reboot.
+returns an error. The radio-panel mode selector saves the requested mode in
+`/mnt/jffs2/radar-mode`. Selecting Standard skips the 160 MSa/s attempt. A mode
+change mutes transmission, clears targets, resets bandwidth to 20 MHz and runs
+the checks again. Carrier frequency and gains are preserved. A reboot retries
+the selected mode. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
+on the Pluto to diagnose startup failures. Target movement runs in the FPGA. Scenes are not restored on reboot.
 
 The web controls have no authentication; use the device USB/private lab network.
 Some base images generate a new SSH host key on each reboot.

@@ -54,19 +54,12 @@ if ! sh /tmp/radio_fast_setup.sh; then
   exit 1
  fi
 fi
-rm -f /tmp/radar-motion.ready
-nohup /tmp/radar-motion > /tmp/radar-motion.log 2>&1 < /dev/null &
-echo $! > /tmp/radar-motion.pid
-attempts=0
-while [ ! -f /tmp/radar-motion.ready ]; do
- attempts=$((attempts+1))
- if [ "$attempts" -ge 5 ]; then
-  /tmp/rtsctl mute
-  touch /tmp/radar-failed
-  echo 'Movement service failed to start'
-  exit 1
- fi
- sleep 1
-done
+if [ -f /tmp/radar-web.tar ] && [ -f /tmp/radar.cgi ]; then
+ mkdir -p /www/cgi-bin
+ tar -xf /tmp/radar-web.tar -C /www
+ cp /tmp/radar.cgi /www/cgi-bin/radar.cgi.new
+ chmod 755 /www/cgi-bin/radar.cgi.new
+ mv /www/cgi-bin/radar.cgi.new /www/cgi-bin/radar.cgi
+fi
 touch /tmp/radar-loaded
 printf 'Volatile radar image loaded. Reboot Pluto to restore the installed firmware.\n'

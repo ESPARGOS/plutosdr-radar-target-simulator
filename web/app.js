@@ -37,7 +37,7 @@ export function renderEditor() {
   $("movement").disabled = !controller.canEdit || !state?.motion_available;
   $("movement").title = state?.motion_available
     ? "Move with radial velocity and bounce at the range limits"
-    : "Requires the movement service on Pluto";
+    : "Movement is unavailable with the loaded firmware";
   for (const id of ["range", "doppler", "gain", "visible", "remove"]) {
     $(id).disabled = !controller.canEdit;
   }
@@ -45,8 +45,14 @@ export function renderEditor() {
 
 function renderRadio() {
   const state = controller.state;
+  $("mode-control").hidden = !onDevice;
+  $("radio-mode").disabled = (!state?.connected && !controller.startup?.failed) || Boolean(controller.operation);
+  if (state?.requested_radio_mode) setField("radio-mode", state.requested_radio_mode);
   $("carrier-form").hidden = !onDevice;
   $("radio-gains").hidden = !onDevice;
+  $("bandwidth-control").hidden = !onDevice;
+  $("bandwidth-input").disabled = !state?.connected || Boolean(controller.operation);
+  $("bandwidth-input").max = (state?.bandwidth_max_hz ?? (state?.wideband_available ? 56e6 : 20e6)) / 1e6;
   $("carrier-input").disabled = !state?.connected || Boolean(controller.operation);
   if (!state) {
     $("rx-gain").disabled = $("tx-gain").disabled = true;
@@ -54,6 +60,8 @@ function renderRadio() {
   }
   if (!carrierDirty && Number.isFinite(state.frequency_hz))
     setField("carrier-input", Number((state.frequency_hz / 1e6).toFixed(6)));
+  if (Number.isFinite(state.rx_bandwidth_hz))
+    setField("bandwidth-input", state.rx_bandwidth_hz / 1e6);
   for (const channel of ["rx", "tx"]) {
     const field = $(channel + "-gain");
     field.disabled =
@@ -74,17 +82,19 @@ function renderRadio() {
     ? `Sample rate ${format(state.sample_rate_hz / 1e6)} MSa/s${state.fallback ? " (fallback)" : ""}`
     : "Sample clock unavailable";
   $("sample-rate").title = "Digital processing rate, not RF bandwidth";
+  $("carrier-input").min = (state.frequency_min_hz ?? 325e6) / 1e6;
+  $("carrier-input").max = (state.frequency_max_hz ?? 3800e6) / 1e6;
   const bandwidth =
     Number.isFinite(state.rx_bandwidth_hz) && Number.isFinite(state.tx_bandwidth_hz)
-      ? Math.min(state.rx_bandwidth_hz, state.tx_bandwidth_hz)
+      ? state.rx_bandwidth_hz
       : NaN;
   const frequency = (hz) =>
     Number(hz / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2, useGrouping: false });
   $("bandwidth").textContent =
     Number.isFinite(state.frequency_hz) && Number.isFinite(bandwidth)
-      ? `Analog bandwidth ${format(bandwidth / 1e6)} MHz\n≈ ${frequency(state.frequency_hz - bandwidth / 2)}–${frequency(state.frequency_hz + bandwidth / 2)} MHz`
+      ? `${onDevice && state.wideband_available ? "" : `Analog bandwidth ${format(bandwidth / 1e6)} MHz\n`}≈ ${frequency(state.frequency_hz - bandwidth / 2)}–${frequency(state.frequency_hz + bandwidth / 2)} MHz`
       : "Radio settings unavailable";
-  $("bandwidth").title = "Nominal analog passband; filter edges roll off gradually";
+  $("bandwidth").title = "Nominal receive band; the complete response also depends on the transmit filter";
   const knownLatency = Number.isFinite(state.hardware_latency_us);
   $("delay-caption").textContent = knownLatency ? "Total delay" : "Added delay";
   $("range-axis-title").textContent = knownLatency ? "Total range (m)" : "Range offset (m)";
@@ -130,11 +140,16 @@ function render() {
       : `${elapsed}${Number.isFinite(startup.stage_elapsed_seconds) ? `${startup.stage_elapsed_seconds} s in this step. ` : ""}${startup.fallback ? "160 MHz calibration failed." : "Usually about 30 s total."}`;
     $("connection").append(detail);
     $("connection").title = startup.failed
-      ? "Logs: /tmp/radar-startup.log and /tmp/radar-motion.log"
+      ? "Startup log: /tmp/radar-startup.log"
       : "The FPGA loads during boot. Radio timing calibration and integrity checks take most of the startup time. Timing retries can take longer.";
   } else {
     $("connection").removeAttribute("title");
-    if (state?.fallback && !warning) {
+    if (state?.connected && !Number.isFinite(state.hardware_latency_us) && !warning) {
+      const detail = document.createElement("span");
+      detail.className = "status-detail";
+      detail.textContent = "Range offset shown: hardware delay is unknown for these filters.";
+      $("connection").append(detail);
+    } else if (state?.fallback && !warning) {
       const detail = document.createElement("span");
       detail.className = "status-detail";
       detail.textContent = `160 MHz calibration failed. Minimum range ${format(state.hardware_latency_us * METERS_PER_US, 1)} m.`;
@@ -241,14 +256,23 @@ for (const channel of ["rx", "tx"]) {
 $("carrier-input").oninput = () => {
   carrierDirty = true;
 };
+$("radio-mode").onchange = () => controller.radioMode($("radio-mode").value);
+
+$("bandwidth-input").onchange = () => {
+  const field = $("bandwidth-input");
+  if (!field.reportValidity()) return;
+  controller.bandwidth(Math.round(Number(field.value) * 1e6));
+};
 $("carrier-input").onchange = () => {
   if (carrierDirty) $("carrier-form").requestSubmit();
 };
 $("carrier-form").onsubmit = async (event) => {
   event.preventDefault();
   const hz = Math.round(Number($("carrier-input").value) * 1e6);
-  if (!Number.isFinite(hz) || hz < 325e6 || hz > 3800e6)
-    return showError(new Error("Carrier must be between 325 and 3800 MHz"));
+  const minimum = controller.state?.frequency_min_hz ?? 325e6;
+  const maximum = controller.state?.frequency_max_hz ?? 3800e6;
+  if (!Number.isFinite(hz) || hz < minimum || hz > maximum)
+    return showError(new Error(`Carrier must be between ${minimum / 1e6} and ${maximum / 1e6} MHz`));
   await controller.carrier(hz);
   carrierDirty = false;
   if (Number.isFinite(controller.state?.frequency_hz))

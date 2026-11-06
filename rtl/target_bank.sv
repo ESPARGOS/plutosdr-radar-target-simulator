@@ -1,192 +1,235 @@
-// Four delay/Doppler paths with signed 16-bit IQ and Q1.15 coefficients.
-module target_bank #(parameter N=4, parameter AW=11)(
- input wire clk, reset, configure, restart,
- input wire sample_valid, input wire signed [15:0] sample_i, sample_q,
- input wire [N-1:0] enabled,
- input wire [N*AW-1:0] delays,
- input wire [N*32-1:0] increments,
- input wire [N*16-1:0] gains,
- output reg signed [15:0] out_i, out_q,
- output reg out_valid, output reg clipped,
- output wire reload_busy,
- output reg [31:0] sample_count
-);
- localparam DEPTH=1<<AW;
- reg [AW-1:0] wr;
- reg [AW:0] filled;
- reg [2:0] valid_pipe;
- // Precompute the gain-scaled NCO tables when settings change. This keeps
- // coefficient multiplication out of the sample path while preserving
- // Q1.15 rounding and the 10-bit phase lookup.
- reg preparing,prepared,active_table,settle,pending_restart;
- reg [N-1:0] active_enabled;
- reg [N*AW-1:0] active_delays;
- reg [N*32-1:0] active_increments;
- reg [10:0] prepare_count;
- wire [9:0] write_index=prepare_count-2'd2;
- wire activate=preparing && prepare_count==1026 && !configure;
- wire mute_now=configure && enabled==0;
- wire flush=activate || mute_now;
- assign reload_busy=preparing || settle;
- wire [31:0] prepare_trig;
- reg [31:0] prepare_trig_pipe;
- always @(posedge clk) if(preparing && !configure) prepare_trig_pipe<=prepare_trig;
- nco_rom prepare_rom(.addr(prepare_count[9:0]),.data(prepare_trig));
- always @(posedge clk) begin
-   if(reset) begin
-     preparing<=0;prepared<=0;prepare_count<=0;active_table<=0;settle<=0;
-     active_enabled<=0;active_delays<=0;active_increments<=0;pending_restart<=0;
-   end else if(configure) begin
-     prepare_count<=0;pending_restart<=restart;
-     if(enabled==0) begin
-       preparing<=0;prepared<=0;settle<=0;active_enabled<=0;
-       active_delays<=delays;active_increments<=increments;
-     end else preparing<=1;
-   end else if(activate) begin
-     // Switch tables together once the reload is complete.
-     preparing<=0;prepared<=0;settle<=1;active_table<=~active_table;
-     active_enabled<=enabled;active_delays<=delays;active_increments<=increments;
-   end else begin
-     if(preparing) prepare_count<=prepare_count+1'b1;
-     if(settle) begin settle<=0;prepared<=1;end
-   end
- end
- wire signed [32:0] products_i [0:N-1], products_q [0:N-1];
- wire signed [17:0] rotated_i [0:N-1], rotated_q [0:N-1];
- integer k;
- localparam SUM_W=18+$clog2(N);
- localparam PAIRS=(N+1)/2;
- wire signed [18:0] pair_i [0:PAIRS-1],pair_q [0:PAIRS-1];
- generate for(genvar p=0;p<PAIRS;p=p+1) begin: combine
-   if(2*p+1<N) begin
-     assign pair_i[p]=$signed(rotated_i[2*p])+$signed(rotated_i[2*p+1]);
-     assign pair_q[p]=$signed(rotated_q[2*p])+$signed(rotated_q[2*p+1]);
-   end else begin
-     assign pair_i[p]=$signed(rotated_i[2*p]);assign pair_q[p]=$signed(rotated_q[2*p]);
-   end
- end endgenerate
- reg signed [18:0] pair_pipe_i [0:PAIRS-1],pair_pipe_q [0:PAIRS-1];
- always @(posedge clk) begin
-   for(integer j=0;j<PAIRS;j=j+1) begin
-     // Keep the last output while sample_valid is low. Holding it here
-     // avoids adding another register to the output path.
-     if(reset || flush) begin pair_pipe_i[j]<=0;pair_pipe_q[j]<=0;end
-     else if(valid_pipe[1]) begin pair_pipe_i[j]<=pair_i[j];pair_pipe_q[j]<=pair_q[j];end
-   end
- end
- reg signed [SUM_W-1:0] sum_i,sum_q;
- always @* begin
-   sum_i=0;sum_q=0;
-   for(integer j=0;j<PAIRS;j=j+1) begin
-     sum_i=sum_i+$signed(pair_pipe_i[j]);sum_q=sum_q+$signed(pair_pipe_q[j]);
-   end
- end
- wire overflow_i=sum_i[SUM_W-1:15]!={(SUM_W-15){sum_i[15]}};
- wire overflow_q=sum_q[SUM_W-1:15]!={(SUM_W-15){sum_q[15]}};
- function automatic signed [15:0] saturate(input signed [SUM_W-1:0] x);
-   if(x[SUM_W-1:15]=={(SUM_W-15){x[15]}}) saturate=x[15:0];
-   else saturate=x[SUM_W-1] ? 16'sh8000 : 16'sd32767;
- endfunction
- always @* begin
-   out_valid=valid_pipe[2];
-   out_i=saturate(sum_i);
-   out_q=saturate(sum_q);
- end
- always @(posedge clk) begin
-   if(reset) begin
-     wr<=0; filled<=0; valid_pipe<=0;
-     clipped<=0;sample_count<=0;
-   end else begin
-     if(sample_valid) begin
-       wr<=wr+1'b1;
-       if(filled<DEPTH) filled<=filled+1'b1;
-       sample_count<=sample_count+1'b1;
-     end
-     valid_pipe<={valid_pipe[1:0],sample_valid && prepared};
-     if(valid_pipe[2] && (overflow_i || overflow_q)) clipped<=1;
-     // Drop all in-flight samples when an atomic configuration is applied.
-     if(flush) begin
-       valid_pipe<=0;clipped<=0;
-     end
-   end
- end
- generate for(genvar t=0;t<N;t=t+1) begin: target
-   (* ram_style="block" *) reg [31:0] history [0:DEPTH-1];
-   (* ram_style="block" *) reg [31:0] coefficients [0:2047];
-   reg [31:0] phase;
-   wire [AW-1:0] delay_samples=active_delays[t*AW+:AW];
-   // Read the history sample one clock ahead. Delays of 0 or 1 sample
-   // bypass the RAM and use the current or previous input directly.
-   reg [AW-1:0] read_pointer,pending_pointer;
-   reg configured_valid;
-   wire [1:0] initial_advance=2'd1+configured_valid+sample_valid;
-   wire [AW-1:0] rd=read_pointer+sample_valid;
-   // Track each history pointer instead of subtracting delay on every RAM read.
-   // During reload, initialize a spare pointer in two short arithmetic steps.
-   always @(posedge clk) begin
-     if(reset) begin read_pointer<=0;pending_pointer<=0;configured_valid<=0;end
-     else begin
-       if(configure) begin
-         pending_pointer<=wr+~delays[t*AW+:AW];configured_valid<=sample_valid;
-       end else if(preparing && prepare_count==0)
-         pending_pointer<=pending_pointer+initial_advance;
-       else if(sample_valid) pending_pointer<=pending_pointer+1'b1;
-       if(activate) read_pointer<=pending_pointer+sample_valid;
-       else if(sample_valid) read_pointer<=read_pointer+1'b1;
-     end
-   end
-   wire [31:0] next_phase=phase+(sample_valid ? active_increments[t*32+:32] : 32'd0);
-   reg [31:0] read_data,last_data,trig;
-   reg signed [32:0] prepare_cosine,prepare_sine;
-   // Keep a separate register after the CDC capture so Vivado can place it
-   // in the DSP. The gain settles before the first table entry is written.
-   reg signed [16:0] prepare_gain;
-   always @(posedge clk) prepare_gain<=$signed({1'b0,gains[t*16+:16]});
-   wire signed [15:0] data_i=(active_enabled[t] && filled>=delay_samples) ?
-     (delay_samples==0 ? sample_i : delay_samples==1 ? last_data[15:0] : read_data[15:0]) : 16'd0;
-   wire signed [15:0] data_q=(active_enabled[t] && filled>=delay_samples) ?
-     (delay_samples==0 ? sample_q : delay_samples==1 ? last_data[31:16] : read_data[31:16]) : 16'd0;
-   reg signed [31:0] ic,qs,is_,qc;
-   reg signed [15:0] data_i1,data_q1;
-   reg [31:0] trig1;
-   assign rotated_i[t]=$signed(products_i[t]) >>> 15;
-   assign rotated_q[t]=$signed(products_q[t]) >>> 15;
-   assign products_i[t]=$signed({ic[31],ic})-$signed({qs[31],qs});
-   assign products_q[t]=$signed({is_[31],is_})+$signed({qc[31],qc});
-   // No array resets: both tables infer block RAM, with synchronous reads.
-   // Reload the inactive table while the active table continues producing IQ.
-   always @(posedge clk) begin
-     if(sample_valid) begin
-       history[wr]<={sample_q,sample_i};
-     end
-     if(sample_valid || settle) read_data<=history[rd];
-     trig<=coefficients[{active_table,next_phase[31:22]}];
-     if(preparing && !configure) begin
-       prepare_cosine<=$signed(prepare_trig_pipe[15:0])*prepare_gain;
-       prepare_sine<=$signed(prepare_trig_pipe[31:16])*prepare_gain;
-       if(prepare_count>=2 && prepare_count<=1025)
-         coefficients[{~active_table,write_index}]<={prepare_sine[30:15],prepare_cosine[30:15]};
-     end
-   end
-   always @(posedge clk) begin
-     if(reset) begin
-       phase<=0;last_data<=0;
-       data_i1<=0;data_q1<=0;trig1<=0;
-       ic<=0;qs<=0;is_<=0;qc<=0;
-     end else begin
-       // Reads are prefetched one edge ahead, including across sample-valid gaps.
-       if(sample_valid) begin
-         phase<=phase+active_increments[t*32+:32];
-         last_data<={sample_q,sample_i};
-       end
-       // Stage 0: register current/past IQ with the matching prefetched coefficient.
-       // Stage 1: multipliers. Stage 2: rotation/pair sum. The final sum and
-       // saturation feed the existing TX output registers without another stage.
-       data_i1<=data_i;data_q1<=data_q;trig1<=trig;
-       ic<=data_i1*$signed(trig1[15:0]);qs<=data_q1*$signed(trig1[31:16]);
-       is_<=data_i1*$signed(trig1[31:16]);qc<=data_q1*$signed(trig1[15:0]);
-       if((activate && pending_restart) || (mute_now && restart)) phase<=0;
-     end
-   end
- end endgenerate
+// Four continuously resampled echoes. Delay motion and carrier Doppler share
+// the same velocity, while each path has an independent amplitude and phase.
+module target_bank
+    #(parameter N = 4,
+      parameter AW = 14)
+    (input wire clk, reset, configure, restart, sample_valid, fast_profile, scene_muted,
+     input wire signed [15 : 0] sample_i, sample_q,
+     input wire [N - 1 : 0] enabled, moving, position_edits, velocity_edits,
+     input wire [N * AW - 1 : 0] delays,
+     input wire [N * 16 - 1 : 0] fractions, gains,
+     input wire [N * 32 - 1 : 0] increments,
+     input wire [N * 48 - 1 : 0] delay_steps,
+     input wire [AW - 1 : 0] upper,
+     output wire signed [15 : 0] out_i, out_q,
+     output wire out_valid,
+     output reg clipped,
+     output wire reload_busy,
+     output reg [31 : 0] sample_count,
+     output wire [N * AW - 1 : 0] current_delays,
+     output wire [N * 16 - 1 : 0] current_fractions,
+     output wire [N * 32 - 1 : 0] current_increments);
+    reg preparing, prepared, active_table, settle, pending_restart;
+    reg [N - 1 : 0] active_enabled;
+    reg [12 : 0] prepare_count;
+    wire [12 : 0] write_slot = prepare_count - 2'd2;
+    wire [9 : 0] write_index = write_slot[11 : 2];
+    wire [1 : 0] write_target = write_slot[1 : 0];
+    reg activation_ready;
+    wire activate = activation_ready && !configure;
+    wire mute_now = configure && scene_muted;
+    wire flush = activate || mute_now;
+    wire [N - 1 : 0] motion_ready;
+    assign reload_busy = preparing || settle || !(&motion_ready);
+    wire [31 : 0] prepare_trig;
+    reg [31 : 0] prepare_trig_pipe;
+    reg signed [16 : 0] prepare_gain;
+    reg signed [32 : 0] prepare_cosine, prepare_sine;
+    nco_rom prepare_rom(.addr(prepare_count[11 : 2]),
+                        .data(prepare_trig));
+    always @(posedge clk) begin
+        activation_ready <= preparing && prepare_count == 4097 && !configure && !reset;
+        if (preparing && !configure) begin
+            prepare_trig_pipe <= prepare_trig;
+            prepare_gain <= $signed({1'b0, gains[prepare_count[1 : 0] * 16 +: 16]});
+            prepare_cosine <= $signed(prepare_trig_pipe[15 : 0]) * prepare_gain;
+            prepare_sine <= $signed(prepare_trig_pipe[31 : 16]) * prepare_gain;
+        end
+        if (reset) begin
+            preparing <= 0;
+            prepared <= 0;
+            prepare_count <= 0;
+            active_table <= 0;
+            settle <= 0;
+            active_enabled <= 0;
+            pending_restart <= 0;
+            sample_count <= 0;
+        end else begin
+            if (sample_valid)
+                sample_count <= sample_count + 1'b1;
+            if (configure) begin
+                prepare_count <= 0;
+                pending_restart <= restart;
+                if (scene_muted) begin
+                    preparing <= 0;
+                    prepared <= 0;
+                    settle <= 0;
+                    active_enabled <= 0;
+                end else
+                    preparing <= 1;
+            end else if (activate) begin
+                preparing <= 0;
+                prepared <= 0;
+                settle <= 1;
+                active_table <= ~active_table;
+                active_enabled <= enabled;
+            end else begin
+                if (preparing)
+                    prepare_count <= prepare_count + 1'b1;
+                if (settle) begin
+                    settle <= 0;
+                    prepared <= 1;
+                end
+            end
+        end
+    end
+    localparam SUM_W = 20 + $clog2(N);
+    wire signed [19 : 0] rotated_i[0 : N - 1], rotated_q[0 : N - 1];
+    wire [N - 1 : 0] interpolated_valid;
+    wire [9:0] interpolation_fraction[0:N-1];
+    wire [143:0] interpolation_coefficients[0:N-1];
+    reg [5 : 0] valid_pipe;
+    (* use_dsp = "no" *) reg signed [20 : 0] pair_i[0 : 1], pair_q[0 : 1];
+    wire signed [SUM_W - 1 : 0] sum_i = $signed(pair_i[0]) + $signed(pair_i[1]);
+    wire signed [SUM_W - 1 : 0] sum_q = $signed(pair_q[0]) + $signed(pair_q[1]);
+    (* keep = "true" *) reg signed [SUM_W - 1 : 0] final_sum_i, final_sum_q;
+    wire overflow_i = final_sum_i[SUM_W - 1 : 15] != {(SUM_W - 15){final_sum_i[15]}};
+    wire overflow_q = final_sum_q[SUM_W - 1 : 15] != {(SUM_W - 15){final_sum_q[15]}};
+    function automatic
+        signed [15 : 0] saturate(input signed [SUM_W - 1 : 0] x);
+        if (x[SUM_W - 1 : 15] == {(SUM_W - 15){x[15]}})
+            saturate = x[15 : 0];
+        else
+            saturate = x[SUM_W - 1] ? 16'sh8000 : 16'sd32767;
+    endfunction
+    reg signed [15 : 0] output_i, output_q;
+    reg output_overflow;
+    assign out_i = output_i;
+    assign out_q = output_q;
+    assign out_valid = valid_pipe[5];
+    always @(posedge clk) begin
+        valid_pipe <= {valid_pipe[4 : 0], interpolated_valid[0]};
+        final_sum_i <= sum_i;
+        final_sum_q <= sum_q;
+        for (integer p = 0; p < 2; p = p + 1) begin
+            if (valid_pipe[2]) begin
+                pair_i[p] <= $signed(rotated_i[2 * p]) + $signed(rotated_i[2 * p + 1]);
+                pair_q[p] <= $signed(rotated_q[2 * p]) + $signed(rotated_q[2 * p + 1]);
+            end
+            if (reset || flush) begin
+                pair_i[p] <= 0;
+                pair_q[p] <= 0;
+            end
+        end
+        if (valid_pipe[4]) begin
+            output_i <= saturate(final_sum_i);
+            output_q <= saturate(final_sum_q);
+            output_overflow <= overflow_i || overflow_q;
+        end
+        if (out_valid && output_overflow)
+            clipped <= 1;
+        if (reset || flush) begin
+            valid_pipe <= 0;
+            clipped <= 0;
+            output_i <= 0;
+            output_q <= 0;
+            output_overflow <= 0;
+        end
+    end
+    generate
+        for (genvar pair = 0; pair < N / 2; pair = pair + 1) begin : filter_tables
+            fractional_rom rom(.clk(clk), .fast_profile(fast_profile),
+                .address0(interpolation_fraction[2*pair]),
+                .address1(interpolation_fraction[2*pair+1]),
+                .coefficients0(interpolation_coefficients[2*pair]),
+                .coefficients1(interpolation_coefficients[2*pair+1]));
+        end
+        for (genvar t = 0; t < N; t = t + 1) begin : target
+            wire [AW - 1 : 0] position;
+            wire [9 : 0] fraction;
+            assign interpolation_fraction[t] = fraction;
+            wire [31 : 0] phase, phase_step, next_phase;
+            target_motion #(.AW(AW))
+                motion(.clk(clk),
+                       .reset(reset),
+                       .configure(flush),
+                       .sample_valid(sample_valid),
+                       .moving(moving[t]),
+                       .enabled(enabled[t]),
+                       .edit_position(position_edits[t]),
+                       .edit_velocity(velocity_edits[t]),
+                       .restart_phase(activate ? pending_restart : restart),
+                       .initial_integer(delays[t * AW +: AW]),
+                       .initial_fraction(fractions[t * 16 +: 16]),
+                       .upper_integer(upper),
+                       .delay_step(delay_steps[t * 48 +: 48]),
+                       .phase_step(increments[t * 32 +: 32]),
+                       .delay_integer(position),
+                       .delay_fraction(fraction),
+                       .phase(phase),
+                       .phase_next(next_phase),
+                       .current_phase_step(phase_step),
+                       .ready(motion_ready[t]),
+                       .current_fraction(current_fractions[t * 16 +: 16]));
+            assign current_delays[t * AW +: AW] = position;
+            assign current_increments[t * 32 +: 32] = phase_step;
+            wire signed [17 : 0] delayed_i, delayed_q;
+            fractional_delay #(.AW(AW))
+                delay_line(.clk(clk),
+                           .reset(reset),
+                           .flush(flush),
+                           .produce(prepared && (&motion_ready)),
+                           .sample_valid(sample_valid),
+                           .sample_i(sample_i),
+                           .sample_q(sample_q),
+                           .delay_integer(position),
+                           .coefficients(interpolation_coefficients[t]),
+                           .output_valid(interpolated_valid[t]),
+                           .output_i(delayed_i),
+                           .output_q(delayed_q));
+            (* ram_style = "block" *) reg [31 : 0] coefficients[0 : 2047];
+            reg [31 : 0] trig, trig_pipe[0 : 11], trig1;
+            (* keep = "true" *) reg [10 : 0] trig_address;
+            // Two shared multipliers fill the inactive tables one target at a time.
+            // The active scene continues until all four new tables are complete.
+            always @(posedge clk) begin
+                trig_address <= {active_table, next_phase[31 : 22]};
+                trig <= coefficients[trig_address];
+                trig_pipe[0] <= trig;
+                for (integer p = 1; p < 12; p = p + 1)
+                    trig_pipe[p] <= trig_pipe[p - 1];
+                if (preparing && !configure) begin
+                    if (prepare_count >= 2 && prepare_count <= 4097 && write_target == t)
+                        coefficients[{~active_table, write_index}] <=
+                            {prepare_sine[30 : 15], prepare_cosine[30 : 15]};
+                end
+            end
+            reg signed [17 : 0] data_i, data_q;
+            reg signed [18 : 0] data_sum;
+            reg signed [16 : 0] trig_sum, trig_difference;
+            reg signed [34 : 0] common_product, cross_i, cross_q;
+            wire signed [35 : 0] product_i = $signed({common_product[34], common_product}) -
+                                             $signed({cross_i[34], cross_i});
+            wire signed [35 : 0] product_q = $signed({common_product[34], common_product}) +
+                                             $signed({cross_q[34], cross_q});
+            reg signed [19 : 0] rotation_i, rotation_q;
+            assign rotated_i[t] = rotation_i;
+            assign rotated_q[t] = rotation_q;
+            always @(posedge clk) begin
+                data_i <= active_enabled[t] ? delayed_i : 18'd0;
+                data_q <= active_enabled[t] ? delayed_q : 18'd0;
+                data_sum <= active_enabled[t] ? $signed(delayed_i) + $signed(delayed_q) : 19'sd0;
+                trig1 <= trig_pipe[11];
+                trig_sum <= $signed(trig_pipe[11][15 : 0]) + $signed(trig_pipe[11][31 : 16]);
+                trig_difference <= $signed(trig_pipe[11][31 : 16]) - $signed(trig_pipe[11][15 : 0]);
+                // Three real products implement an exact complex multiplication. All
+                // intermediate bits are kept until the final Q1.15 scaling.
+                rotation_i <= $signed(product_i) >>> 15;
+                rotation_q <= $signed(product_q) >>> 15;
+                common_product <= data_sum * $signed(trig1[15 : 0]);
+                cross_i <= data_q * trig_sum;
+                cross_q <= data_i * trig_difference;
+            end
+        end
+    endgenerate
 endmodule

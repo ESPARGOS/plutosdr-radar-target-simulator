@@ -15,7 +15,7 @@ licenses or grant rights in AMD tools or unrelated upstream firmware.
 | Maia development container | [maia-sdr/maia-sdr](https://github.com/maia-sdr/maia-sdr) | External build dependency; component licenses remain upstream |
 | Vivado/Vitis 2023.2 | AMD | User-supplied proprietary toolchain; not redistributed |
 | Linux, BusyBox, libraries and device trees in base firmware | User-supplied compatible Pluto FIT image | Their individual licenses apply; not supplied as source or binary in this repository |
-| pyespargos | [ESPARGOS/pyespargos](https://github.com/ESPARGOS/pyespargos) | Optional external measurement dependency; its own license applies |
+| pyespargos | [ESPARGOS/pyespargos](https://github.com/ESPARGOS/pyespargos) | Optional dependency of `espargos-experiments/`; not required by the simulator |
 
 The native tools statically link the toolchain's C runtime. A distributed
 firmware release must include applicable notices and the corresponding source

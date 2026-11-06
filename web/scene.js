@@ -1,6 +1,6 @@
 // Scene values use microseconds, hertz and dB. The wire format uses FPGA words.
 export const MAX_TARGETS = 4;
-export const MAX_DELAY_SAMPLES = 2047;
+export const MAX_DELAY_SAMPLES = 16383;
 export const METERS_PER_US = 149.896229;
 export const PHASE_SCALE = 2 ** 32;
 
@@ -27,7 +27,7 @@ export function validateScene(targets, state) {
       typeof target.enabled !== "boolean" ||
       (target.realistic_movement !== undefined && typeof target.realistic_movement !== "boolean") ||
       target.delay_us < 0 ||
-      target.delay_us > (MAX_DELAY_SAMPLES * 1e6) / rate ||
+      target.delay_us > (state.max_delay_us ?? (MAX_DELAY_SAMPLES * 1e6) / rate) ||
       Math.abs(target.doppler_hz) >= rate / 2 ||
       target.gain_db < -90 ||
       target.gain_db > 0
@@ -42,16 +42,21 @@ export function encodeScene(targets, state) {
   const rate = sampleRate(state);
   validateScene(targets, state);
   let mask = 0;
+  const fractional = state.fractional_delay_bits === 10;
+  const scale = fractional ? 1024 : 1;
   const rows = targets.map((target, index) => {
     if (target.enabled) mask |= 1 << index;
-    return [
-      Math.round((target.delay_us * rate) / 1e6),
+    const units = Math.round((target.delay_us * rate * scale) / 1e6);
+    const words = [
+      Math.floor(units / scale),
       Math.round((target.doppler_hz / rate) * PHASE_SCALE) >>> 0,
       Math.min(32767, Math.round(32768 * 10 ** (target.gain_db / 20))),
-    ].join(" ");
+    ];
+    if (fractional) words.push((units % scale) * 64);
+    return words.join(" ");
   });
-  while (rows.length < MAX_TARGETS) rows.push("0 0 0");
-  return [mask, ...rows].join("\n");
+  while (rows.length < MAX_TARGETS) rows.push(fractional ? "0 0 0 0" : "0 0 0");
+  return [...(fractional ? ["fractional"] : []), mask, ...rows].join("\n");
 }
 
 export function parseSceneFile(text, state) {

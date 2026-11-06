@@ -48,10 +48,11 @@ export class RadarAPI {
         (mask, target, index) => mask | (target.realistic_movement ? 1 << index : 0),
         0,
       );
-      const upper = Math.max(1, Math.min(2047, Math.floor(edits.upper ?? 2047)));
+      const maximum = Math.round(state.max_delay_us * state.sample_rate_hz / 1e6);
+      const upper = Math.max(1, Math.min(maximum, Math.floor(edits.upper ?? maximum)));
       payload = `motion ${mask} ${edits.positionEdits ?? 15} ${edits.phaseEdits ?? 15} ${upper}\n${payload}`;
     } else if (targets.some((t) => t.realistic_movement)) {
-      throw new Error("Movement service unavailable");
+      throw new Error("Movement is unavailable with the loaded firmware");
     }
     return this.request("/apply", payload);
   }
@@ -60,6 +61,12 @@ export class RadarAPI {
   }
   carrier(hz) {
     return this.request("/radio", String(hz));
+  }
+  radioMode(mode) {
+    return this.request("/mode", mode);
+  }
+  bandwidth(hz) {
+    return this.request("/bandwidth", String(hz));
   }
   gain(channel, db) {
     return this.request("/gain", `${channel} ${db}`);

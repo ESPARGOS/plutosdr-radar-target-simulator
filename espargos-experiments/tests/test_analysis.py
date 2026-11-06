@@ -16,7 +16,7 @@ static = np.exp(1j * rng.uniform(-np.pi, np.pi, (7, 1))) * np.exp(
 )
 ticks = np.arange(250) * 1024
 t = ticks * 256 / fs
-scene = json.loads((root / "config/three-targets.json").read_text())
+scene = json.loads((root.parent / "config/three-targets.json").read_text())
 h = np.broadcast_to(static, (len(t), 7, len(bins))).copy()
 for target in scene["targets"]:
     h += (

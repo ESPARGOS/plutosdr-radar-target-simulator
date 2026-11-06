@@ -4,57 +4,84 @@ progress() {
  printf '%s %s %s\n' "$started" "$now" "$1" > /tmp/radar-startup-state.new
  mv /tmp/radar-startup-state.new /tmp/radar-startup-state
 }
+mode=overclocked
+if [ -f /mnt/jffs2/radar-mode ]; then
+ read -r mode < /mnt/jffs2/radar-mode
+fi
+case "$mode" in standard|overclocked) ;; *) mode=overclocked ;; esac
+reconfigure=0
+failed() {
+ result=$?
+ if [ "$result" != 0 ]; then
+  rm -f /tmp/radar-loaded
+  touch /tmp/radar-failed
+ fi
+}
+trap failed 0
+if [ "$1" = reconfigure ]; then
+ reconfigure=1
+ /tmp/rtsctl mute || exit 1
+ for d in /sys/bus/iio/devices/iio:device*; do
+  if [ "$(cat "$d/name")" = ad9361-phy ]; then phy=$d; break; fi
+ done
+ carrier=$(cat "$phy/out_altvoltage0_RX_LO_frequency") || exit 1
+ read -r rx_gain rest < "$phy/in_voltage0_hardwaregain" || exit 1
+ read -r tx_gain rest < "$phy/out_voltage0_hardwaregain" || exit 1
+ rm -f /tmp/radar-loaded
+ set -- start
+fi
 case "$1" in
  start)
-  if [ -f /tmp/radar-loaded ] && [ -f /tmp/radar-motion.pid ] &&
-     kill -0 "$(cat /tmp/radar-motion.pid)" 2>/dev/null; then exit 0; fi
+  if [ -f /tmp/radar-loaded ] && [ ! -f /tmp/radar-failed ]; then exit 0; fi
   rm -f /tmp/radar-loaded /tmp/radar-failed /tmp/radar-fallback
   read -r started rest < /proc/uptime
   progress radio
   cp /usr/bin/rtsctl /tmp/rtsctl || exit 1
   mkdir -p /www/cgi-bin || exit 1
   cp /usr/share/radar-web/* /www/ || exit 1
-  cp /usr/bin/radar.cgi /www/cgi-bin/radar.cgi || exit 1
+  cp /usr/bin/radar.cgi /www/cgi-bin/radar.cgi.new || exit 1
+  mv /www/cgi-bin/radar.cgi.new /www/cgi-bin/radar.cgi || exit 1
   chmod 755 /www/cgi-bin/radar.cgi || exit 1
   if ! sh /usr/bin/radar-radio-setup > /tmp/radar-startup.log 2>&1; then
    touch /tmp/radar-failed
    echo 'Radio setup failed; targets muted; see /tmp/radar-startup.log'
    exit 1
   fi
-  progress clocks
-  if ! sh /usr/bin/radar-radio-fast >> /tmp/radar-startup.log 2>&1; then
-   touch /tmp/radar-fallback
-   progress fallback
-   echo '160 MSa/s calibration failed; trying 61.44 MSa/s' >> /tmp/radar-startup.log
+  if [ "$mode" = standard ]; then
+   progress standard
    if ! sh /usr/bin/radar-radio-fast 61440000 >> /tmp/radar-startup.log 2>&1; then
     touch /tmp/radar-failed
-    echo 'Both radio profiles failed; targets muted; see /tmp/radar-startup.log'
+    exit 1
+   fi
+  else
+   progress clocks
+   if ! sh /usr/bin/radar-radio-fast >> /tmp/radar-startup.log 2>&1; then
+    touch /tmp/radar-fallback
+    progress fallback
+    echo '160 MSa/s calibration failed; trying 61.44 MSa/s' >> /tmp/radar-startup.log
+    if ! sh /usr/bin/radar-radio-fast 61440000 >> /tmp/radar-startup.log 2>&1; then
+     touch /tmp/radar-failed
+     echo 'Both radio profiles failed; targets muted; see /tmp/radar-startup.log'
+     exit 1
+    fi
+   fi
+  fi
+  if [ "$reconfigure" = 1 ]; then
+   # Delay words refer to a different sample interval after switching rates.
+   # Clear the old scene, keeping carrier and radio gains while still muted.
+   if ! { printf '0\n0 0 0\n0 0 0\n0 0 0\n0 0 0\n' | /tmp/rtsctl apply; } ||
+      ! echo "$carrier" > "$phy/out_altvoltage0_RX_LO_frequency" ||
+      ! echo "$carrier" > "$phy/out_altvoltage1_TX_LO_frequency" ||
+      ! echo "$rx_gain" > "$phy/in_voltage0_hardwaregain" ||
+      ! echo "$tx_gain" > "$phy/out_voltage0_hardwaregain"; then
+    touch /tmp/radar-failed
     exit 1
    fi
   fi
-  progress movement
-  rm -f /tmp/radar-motion.ready
-  /usr/bin/radar-motion > /tmp/radar-motion.log 2>&1 &
-  echo $! > /tmp/radar-motion.pid
-  attempts=0
-  while [ ! -f /tmp/radar-motion.ready ]; do
-   attempts=$((attempts+1))
-   if [ "$attempts" -ge 5 ]; then
-    /tmp/rtsctl mute
-    touch /tmp/radar-failed
-    echo 'Movement service failed to start; see /tmp/radar-motion.log'
-    exit 1
-   fi
-   sleep 1
-  done
   progress ready
   touch /tmp/radar-loaded
   ;;
  stop)
-  if [ -f /tmp/radar-motion.pid ]; then
-   kill "$(cat /tmp/radar-motion.pid)" 2>/dev/null
-   rm -f /tmp/radar-motion.pid
-  fi
   rm -f /tmp/radar-loaded /tmp/radar-failed /tmp/radar-fallback
   rm -f /tmp/radar-startup-state
   /tmp/rtsctl mute

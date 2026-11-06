@@ -9,12 +9,10 @@ from pathlib import Path
 p = argparse.ArgumentParser(add_help=False)
 p.add_argument(
     "--pyespargos",
-    default=os.environ.get(
-        "PYESPARGOS_PATH",
-        str(Path(__file__).resolve().parents[2] / "ESPARGOS/pyespargos"),
-    ),
+    default=os.environ.get("PYESPARGOS_PATH"),
+    required=not os.environ.get("PYESPARGOS_PATH"),
 )
-p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST", "192.168.1.100"))
+p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST"), required=not os.environ.get("ESPARGOS_HOST"))
 p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.2.1"))
 p.add_argument(
     "--range-max",

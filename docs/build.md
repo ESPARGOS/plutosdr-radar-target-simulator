@@ -1,11 +1,11 @@
 # Building
 
 Run these commands from the repository root. You will need Linux, Python 3.10+,
-GNU Make, Git and Docker, with permission to run Docker as your user.
+NumPy, GNU Make, Git and Docker, with permission to run Docker as your user.
 For packaging, also install U-Boot tools (`mkimage`, `dumpimage`) and device-tree
 compiler tools (`fdtget`, `fdtput`). Arch package names include `docker`, `git`, `make`,
-`python`, `uboot-tools` and `dtc`; equivalent Debian packages are `docker.io`,
-`git`, `make`, `python3`, `u-boot-tools` and `device-tree-compiler`.
+`python`, `python-numpy`, `uboot-tools` and `dtc`; equivalent Debian packages are `docker.io`,
+`git`, `make`, `python3`, `python3-numpy`, `u-boot-tools` and `device-tree-compiler`.
 
 ## Toolchain
 
@@ -46,11 +46,17 @@ make tools
 ```
 
 `prepare` fetches ADI HDL revision
-`065c8f186ef87ff049d279ed5859ee8d97d91808`, generates the NCO ROM and applies the
+`065c8f186ef87ff049d279ed5859ee8d97d91808`, generates the oscillator and fractional-delay tables, and applies the
 integration patches. Set `ADI_HDL_SOURCE=/path/to/hdl` to archive that revision
 from an existing checkout instead of downloading it. The sources are extracted into
 `vendor/adi-hdl` and reused on later runs. If you change the ADI revision, start
 with a fresh vendor directory.
+
+The interpolation tables use dual-port block RAMs shared by pairs of targets.
+Vivado initially counts the two read ports separately, before combining them.
+The build allows this preliminary estimate to exceed the device's RAM count so
+that the tables are not unnecessarily synthesized as logic. Implementation still
+enforces Pluto's physical resource limits and checks timing at 160 MHz.
 
 Outputs:
 
@@ -75,10 +81,8 @@ A passing build still needs radio tests, particularly after clock or interface
 changes. Packaging uses the base image described in [firmware.md](firmware.md);
 flashing is a separate step.
 
-For tests without Vivado/Docker, install Icarus Verilog, prepare the vendor tree,
-and run `make test-local`. Analysis tests additionally use
-`python3 -m pip install -r requirements-test.txt`, then `make test-analysis`.
-The optional `make capture-tool` builds the lab-only native ADC snapshot utility.
+For tests without Vivado/Docker, install Icarus Verilog and the Python packages
+listed in `requirements-test.txt`, then run `make test-local`.
 
 Each build writes its firmware hashes to `build/firmware/firmware-manifest.json`.
 Rebuilding can produce different hashes because some outputs include timestamps.

@@ -16,7 +16,7 @@ A web interface hosted on the Pluto lets you place targets and adjust their stre
 
 You can drag targets in range and velocity, enter exact settings in the sidebar,
 or save a scene to use again later. Changes take effect as you drag. The interface
-also controls the carrier frequency and RX/TX gains.
+also controls the carrier frequency, analog bandwidth and RX/TX gains.
 
 ## Connections
 
@@ -57,55 +57,74 @@ away. Shifting its frequency makes it appear to move toward or away from the rad
 The optional movement setting changes its distance over time to match that velocity.
 
 Pluto takes a small amount of time to receive and retransmit a signal, even when
-no extra delay is selected. The faster mode uses a **0.325 µs** reference delay,
-which looks like a target
-about **48.7 m** away to a radar that measures distance from the echo's round-trip
-time. This is the closest target the simulator can represent in its faster mode.
-The web interface includes this delay in the displayed distance and shades the
+no extra delay is selected. With the default 20 MHz bandwidth, this corresponds
+to about **67.5 m** in overclocked mode or **163.5 m** in standard mode. The web
+interface includes this delay in the displayed distance and shades the
 unreachable region.
 
-The simulator passes a **20 MHz band around the selected carrier frequency**.
-For example, at 2385 MHz this is roughly 2375–2395 MHz, with gradual roll-off at
-the edges. Its internal sample rate is higher to reduce delay. That does not mean
-it can reflect a 160 MHz-wide radar signal.
+The analog bandwidth is configurable and defaults to **20 MHz**. Wider settings
+require the tuning range extension described below. The internal sample rate
+is higher to reduce delay, and does not describe the reflected RF bandwidth.
 
-| Feature | Capability |
-| --- | --- |
-| Analog bandwidth | 20 MHz |
-| Carrier frequency | 325–3800 MHz in the simulator. Pluto’s frequency-range hack can unlock 70–6000 MHz at the driver level (see below). |
-| Hardware | PlutoSDR Rev.B and Rev.C |
-| Targets | Up to 4, with independent distance, velocity and echo strength |
-| Simulated distance | About 48.7 m to 1.97 km, or 117.1 m to 5.11 km in fallback mode |
-| Distance adjustment | 0.94 m steps, or 2.44 m in fallback mode |
-| Doppler adjustment | About 0.037 Hz steps, or 0.014 Hz in fallback mode. The UI converts these to radial velocity at the selected carrier. |
-| Target gain | −90 to 0 dB, applied separately to each echo |
-| Moving targets | Distance updated 100 times per second, in the distance steps above |
-| Reference receive-to-transmit delay | 0.325 µs, or 0.781 µs in fallback mode |
-| Internal sample rate | 160 MSa/s, or 61.44 MSa/s in fallback mode |
+| Feature | Standard mode | Overclocked mode |
+| --- | --- | --- |
+| Analog bandwidth, common RX/TX setting | 0.2–30.72 MHz | 0.2–56 MHz |
+| Carrier frequency | 325–3800 MHz, extended to 70 MHz–6 GHz as described below | Same |
+| Hardware | PlutoSDR Rev.B and Rev.C/D | Same |
+| Targets | Up to 4 independent distances, velocities and echo strengths | Same |
+| Maximum simulated distance | About 30.1 km | About 11.6 km |
+| Minimum distance, 20 MHz bandwidth | 163.5 m (1.091 µs) | 67.5 m (0.450 µs) |
+| Minimum distance, widest bandwidth | 160.9 m (1.073 µs) | 62.1 m (0.414 µs) |
+| Fractional-delay distance step | About 2.38 mm | About 0.915 mm |
+| Doppler step | About 0.014 Hz | About 0.037 Hz |
+| Target gain | −90 to 0 dB per echo | Same |
+| Moving targets | Fractional delay and carrier phase updated on every FPGA sample | Same |
+| Internal sample rate | 61.44 MSa/s | 160 MSa/s |
 
-Pluto’s [frequency-range hack](https://analogdevicesinc.github.io/system-level/tools/pluto/users/customizing/)
-configures its driver to treat the radio as an AD9364 or AD9361, allowing tuning
-from 70 MHz to 6 GHz. The simulator’s current UI and API still enforce
-325–3800 MHz, so changing that driver setting alone does not extend the range
-available here. Performance outside Pluto’s specified band is not guaranteed.
+Delays in parentheses are the reference receive-to-transmit delays. Distance
+adjustment steps describe the available settings, not absolute range accuracy.
+The UI converts Doppler to radial velocity at the selected carrier.
 
-### Faster operation and automatic fallback
+### Tuning range extension
+
+Pluto's AD9363 is specified for 325–3800 MHz and 20 MHz bandwidth. The
+[ADI tuning range extension](https://analogdevicesinc.github.io/system-level/tools/pluto/users/customizing/)
+configures its driver as an AD9364, enabling 70 MHz–6 GHz tuning and wider
+filters without a hardware modification. Performance outside the AD9363's
+specifications is not guaranteed.
+
+Connect with `ssh root@192.168.2.1` (factory password `analog`), then run on Pluto:
+
+```sh
+fw_setenv attr_name compatible
+fw_setenv attr_val ad9364
+fw_setenv compatible ad9364
+reboot
+```
+
+The setting persists across reboots. The web interface detects the extended
+limits automatically.
+
+### Overclocked operation and automatic fallback
 
 The shorter minimum distance comes from running Pluto's radio interface at
 **160 MHz**, above its specified **61.44 MHz** limit. Operation at this rate
 depends on the individual device. The limit comes from the
 [AD9363 datasheet, pages 6–7](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9363.pdf).
 
-At startup, the simulator checks whether the faster setting works. If that check
-fails or times out, it tries 61.44 MHz instead. This keeps the same four targets
-and 20 MHz bandwidth, but increases the minimum distance to **117.1 m**. The web
+Select **Standard** or **Overclocked** in the radio panel. Changing modes restarts
+the radio, clears the scene and resets bandwidth to 20 MHz. The selection is
+saved across reboots.
+
+At startup, the simulator checks whether the selected mode works. If the
+overclocked setting fails or times out, it tries standard mode instead. The web
 interface reports the fallback and adjusts the shaded region automatically.
-If neither setting passes, transmission stays muted. Each reboot tries the faster
-setting again.
+If neither setting passes, transmission stays muted.
 
 The displayed minimum distances are reference values, not individual calibration
-of your Pluto. See [operating limits](docs/limitations.md) for details about range,
-antenna coupling and moving targets.
+of your Pluto. For bandwidth settings without a delay reference, the interface
+shows added range instead. See [operating limits](docs/limitations.md) for details
+about range, antenna coupling and moving targets.
 
 ## Related work
 
@@ -114,18 +133,18 @@ retransmits radar signals in
 [“Application of Low-Cost Pluto SDR as a Radar Target Simulator”](https://doi.org/10.5515/KJKIEES.2026.37.1.117)
 (*J. Korean Inst. Electromagn. Eng. Sci.*, 37(1), 117–120, 2026).
 Their paper reports simulated distances up to 300 km in 5 m steps. This project
-focuses on shorter distances, with four independently adjustable targets, finer
-0.94 m distance steps and a browser interface. Its faster mode reaches about
-1.97 km. The paper does not report the receive-to-transmit delay, so we cannot
-compare the closest distance each simulator can represent.
+focuses on four independently adjustable targets, fractional delay, continuous
+FPGA motion and a browser interface, with source code and ready-made firmware.
+The paper does not link to a source repository or report the receive-to-transmit
+delay, so we cannot compare the closest distance each simulator can represent.
 
 ## Using the radar target simulator
 
 With the radar firmware installed, open **http://192.168.2.1/** (or your Pluto's
-USB address). The status at the top right shows startup progress. Radio setup
-and checks usually take about 30 seconds after Pluto boots.
+USB address). The status at the top right shows radio setup and startup checks.
 
-1. Set the carrier to match your radar. Changing it mutes all targets.
+1. Set the carrier and bandwidth to match your radar. Changing the carrier mutes
+   all targets.
 2. Adjust RX and TX gains if needed. The defaults are RX 25 dB and TX −35 dB.
 3. Click **+ Add target**, then drag the point or edit its settings. New targets
    are enabled automatically with −14 dB target gain.
@@ -137,7 +156,7 @@ and checks usually take about 30 seconds after Pluto boots.
    **Fit targets** brings all targets into view.
 5. Turn on **Realistic movement** to advance a target at its radial velocity.
    It bounces between the minimum reachable range and the top of the range axis.
-   Movement runs on Pluto, even after you close the browser.
+   Movement runs on the FPGA, even after you close the browser.
 6. Use **Target visible** for an individual target, **Mute all** to silence them all,
    or **Unmute all** to make every configured target visible.
 
@@ -155,32 +174,20 @@ make web
 # Open http://127.0.0.1:8080/
 ```
 
-## Using the ESPARGOS MIMO radar demo
+## ESPARGOS One and measurement reproduction
 
-You can use the simulator with the MIMO radar demo in `pyespargos` to see the
-four echoes on a range–velocity plot. Run the following from the `pyespargos`
-directory, replacing `192.168.1.100` with your ESPARGOS address:
+<p align="center"><a href="https://espargos.net/espargos-one/"><img src="https://raw.githubusercontent.com/ESPARGOS/pyespargos/main/img/espargos-one-banner.svg" width="900" alt="ESPARGOS One: Digital Phased Array for 2.4 GHz"></a></p>
 
-```sh
-./demos/iq/mimo-radar/main.py -s 192.168.1.100 \
-  -o app.sample_rate=20 -o app.range_maximum=600
-```
-
-This selects a 20 MSa/s radar sample rate and a 600 m display range. Set both
-the demo and Pluto to the same carrier frequency. Both default to 2385 MHz.
-Add targets in the Pluto web interface, then adjust the demo's velocity window
-to include them. The simulator starts with a 600 m range and ±3 m/s window.
-
-Use the default gains as a starting point and adjust them for your antenna
-placement. A stationary target may disappear because the demo suppresses
-stationary reflections. Give it a nonzero velocity to make it visible.
-
-![Four simulated targets in the ESPARGOS MIMO radar demo](docs/assets/mimo-radar.png)
+You can use ESPARGOS One as the radar with the [pyespargos MIMO radar demo](espargos-experiments/demo.md).
+The [espargos-experiments](espargos-experiments/README.md) folder contains setup
+instructions, acquisition recipes and analysis scripts to reproduce the paper’s
+measurements and plots. These tools are optional. The simulator works independently
+of ESPARGOS.
 
 ## How it works
 
-Each path delays the incoming samples, applies a Doppler shift and scales their
-amplitude. The four echoes are then added together and sent to the transmitter.
+Each path delays the incoming samples using an integer delay and a fractional-delay
+filter, applies a Doppler shift and scales their amplitude. The four echoes are then added together and sent to the transmitter.
 
 ![The four FPGA target paths](docs/assets/fpga-datapath.svg)
 
@@ -199,6 +206,7 @@ make test       # run the HDL and control tests
 make fpga       # build the FPGA bitstream
 make tools      # build the ARM control programs
 make firmware   # assemble the firmware image
+make release    # collect GitHub release files in release/
 ```
 
 The result is `build/firmware/pluto.frm`, containing the FPGA, Linux system and
@@ -217,7 +225,7 @@ from Git.
 - [Signal processing and HTTP API](docs/architecture.md)
 - [FPGA registers](docs/registers.md)
 - [Operating limits](docs/limitations.md)
-- [Running tests and ESPARGOS measurements](docs/testing.md)
+- [Running tests](docs/testing.md)
 - [Contributing](CONTRIBUTING.md)
 - [Third-party licenses](THIRD_PARTY.md)
 
@@ -229,15 +237,16 @@ from Git.
 | `patches/` | Changes to the ADI HDL |
 | `host/` | Pluto control programs, startup script and preview server |
 | `web/` | Web interface and its assets |
-| `scripts/` | Build tools, deployment scripts and measurement utilities |
-| `tests/` | Simulation, analysis and browser tests |
-| `config/` | Example scenes and lab settings |
+| `scripts/` | Build tools and deployment scripts |
+| `tests/` | HDL, control and browser tests |
+| `config/` | Example scenes |
 | `docs/` | User and developer guides, diagrams |
+| `espargos-experiments/` | Optional ESPARGOS acquisition, analysis and paper figures |
 
 ## AI use
 
 All source code written for this project was AI-generated. Third-party code
-retains its original authorship and licenses.
+keeps its original authorship and licenses.
 
 ## License
 

@@ -14,10 +14,10 @@ done
 [ -n "$phy" ]
 debug=/sys/kernel/debug/iio/${phy##*/}
 qec_mode=$debug/adi,qec-tracking-slow-mode-enable
-checker=/usr/bin/radio-pn
-[ -x "$checker" ] || checker=/tmp/radio-pn
+checker=/tmp/radio-pn
+[ -x "$checker" ] || checker=/usr/bin/radio-pn
 version=$(devmem 0x43c00004)
-[ "$version" = 0x00010010 ] || { echo "Unsupported radar FPGA revision: $version" >&2; exit 2; }
+{ [ "$version" = 0x00010010 ] || [ "$version" = 0x00010011 ] || [ "$version" = 0x00020000 ] || [ "$version" = 0x00020001 ] || [ "$version" = 0x00020002 ]; } || { echo "Unsupported radar FPGA revision: $version" >&2; exit 2; }
 rx_saved=;tx_saved=;io_saved=;qec_saved=;complete=0
 recovery=/tmp/radar-fast-recovery
 if [ -f "$recovery" ]; then
@@ -69,15 +69,17 @@ restore_normal() {
   qec_check=$(spi_read 0x16f)
   [ "$(((qec_check >> 5) & 7))" -eq "$((qec_saved * 4))" ] || return 1
  fi
- # Check actual data as well as the reported clock rates.
- "$checker" 1 || return 1
+ # The fast profile's pin delays may not work at the normal clock. Retune
+ # before validating data, rather than rejecting recovery on those old delays.
+ if [ "${RADAR_DEFER_TUNING:-0}" != 1 ]; then
+  "$checker" 1 --tune || return 1
+ fi
  rm -f "$recovery"
 }
 if [ "$wanted" = restore ]; then restore_normal; exit $?; fi
 if [ "$wanted" = 61440000 ]; then
  restore_normal || exit 2
  set -e
- "$checker" 1 --tune
  /tmp/rtsctl mute
  echo 25 > "$phy/in_voltage0_hardwaregain"
  echo -35 > "$phy/out_voltage0_hardwaregain"

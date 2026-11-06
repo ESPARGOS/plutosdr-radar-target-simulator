@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build/tests"
@@ -17,10 +18,10 @@ subprocess.run(
         f'-DRADAR_FAILED_FILE="{BUILD / "radar-failed"}"',
         f'-DRADAR_STARTUP_FILE="{BUILD / "radar-startup-state"}"',
         f'-DRADAR_FALLBACK_FILE="{BUILD / "radar-fallback"}"',
+        f'-DRADAR_MODE_FILE="{BUILD / "radio-mode"}"',
+        f'-DRADAR_SERVICE="{BUILD / "mode-service.sh"}"',
         "host/radar_cgi.c",
         "host/radar_control.c",
-        "host/radar_motion.c",
-        f'-DRADAR_MOTION_FILE="{BUILD / "motion.state"}"',
         "tests/fake_device.c",
         "tests/fake_linux.c",
         "-Wl,--wrap=fopen",
@@ -69,6 +70,50 @@ def request(path, body=b"", ready=True, failed=False, fallback=False, **faults):
     return code, json.loads(payload), state
 
 
+assert request("state", RADAR_TEST_MASK="0")[1]["muted"]
+assert not request("state", RADAR_TEST_MASK="1")[1]["muted"]
+assert request("radio", b"2385000000")[1]["muted"]
+assert request("state")[1]["frequency_max_hz"] == 3800000000
+assert request("radio", b"6000000000")[0] == 400
+extended = request("radio", b"6000000000", RADAR_TEST_EXTENDED="1")
+assert extended[0] == 200 and extended[1]["frequency_hz"] == 6000000000
+assert extended[1]["frequency_min_hz"] == 70000000
+assert extended[1]["frequency_max_hz"] == 6000000000
+assert request("radio", b"70000000", RADAR_TEST_EXTENDED="1")[0] == 200
+assert request("bandwidth", b"56000000")[0] == 400
+assert request("bandwidth", b"20000000")[0] == 200
+wide = request("bandwidth", b"56000000", RADAR_TEST_WIDEBAND="1")
+assert wide[0] == 200 and wide[1]["wideband_available"]
+assert wide[1]["rx_bandwidth_hz"] == 56000000
+assert wide[1]["tx_bandwidth_hz"] == 56000000
+assert wide[1]["hardware_latency_us"] == 0.4078125 and wide[1]["muted"]
+standard_wide = dict(RADAR_TEST_WIDEBAND="1", RADAR_TEST_EIGHT_TAPS="1",
+                     RADAR_TEST_RATE="61440000")
+assert request("state", **standard_wide)[1]["bandwidth_max_hz"] == 30720000
+standard_bandwidth = request("bandwidth", b"30720000", **standard_wide)
+assert standard_bandwidth[0] == 200
+assert standard_bandwidth[1]["hardware_latency_us"] == 1.0734375
+assert request("bandwidth", b"20000000", **standard_wide)[1]["hardware_latency_us"] == 1.090625
+assert request("bandwidth", b"30720001", **standard_wide)[0] == 400
+fast_bandwidth = request("bandwidth", b"56000000", RADAR_TEST_WIDEBAND="1",
+                         RADAR_TEST_EIGHT_TAPS="1")
+assert fast_bandwidth[0] == 200 and fast_bandwidth[1]["hardware_latency_us"] == .4140625
+assert request("bandwidth", b"20000000", RADAR_TEST_WIDEBAND="1",
+               RADAR_TEST_EIGHT_TAPS="1")[1]["hardware_latency_us"] == .45
+assert (
+    request(
+        "bandwidth", b"56000000", RADAR_TEST_WIDEBAND="1", RADAR_TEST_RATE="61440000"
+    )[0]
+    == 400
+)
+for payload in (b"0 20000000", b"20000000 56000001", b"-1 20000000", b"20000000 junk", b"20000000 20000000 extra", b"4295167296"):
+    assert request("bandwidth", payload, RADAR_TEST_WIDEBAND="1")[0] == 400
+custom = request("bandwidth", b"30000000", RADAR_TEST_WIDEBAND="1")
+assert custom[0] == 200 and custom[1]["muted"]
+assert custom[1]["rx_bandwidth_hz"] == 30000000
+assert custom[1]["tx_bandwidth_hz"] == 30000000
+assert custom[1]["hardware_latency_us"] is None
+assert request("bandwidth", b"10000000")[0] == 200
 code, response, hardware = request("mute", RADAR_TEST_NO_RADIO="1")
 assert code == 200 and response["muted"] and not response["radio_available"]
 assert hardware["mask"] == 0 and not any(t["enabled"] for t in response["targets"])
@@ -139,14 +184,68 @@ startup_file.unlink()
 for header in (
     "motion 16 0 0 100",
     "motion 1 0 0 0",
-    "motion 1 0 0 2048",
+    "motion 1 0 0 8192",
     "motion 1 0 0 1 trailing",
 ):
     assert request("apply", (header + "\n0\n" + "0 0 0\n" * 4).encode())[0] == 400
 assert (
-    request("apply", ("motion 1 15 15 100\n1\n" + "0 0 100\n" * 4).encode())[0] == 503
+    request("apply", ("motion 1 15 15 100\n1\n" + "0 0 100\n" * 4).encode())[0] == 400
 )
 
 print(
     "PASS: native CGI failure responses, independent mute, rollback, malformed payloads, origins and startup failure"
 )
+
+# Hardware motion needs no host movement daemon. Fractional samples survive the
+# parser, shadow registers and coherent snapshot returned to the browser.
+fractional = b"motion 1 15 15 8000\nfractional\n1\n100 456 16384 32768\n0 0 0 0\n0 0 0 0\n0 0 0 0\n"
+code, response, hardware = request("apply", fractional, RADAR_TEST_FRACTIONAL="1")
+assert code == 200 and response["fpga_motion"] and response["motion_available"]
+assert response["targets"][0]["realistic_movement"]
+assert abs(response["targets"][0]["delay_us"] - 100.5 / 160) < 1e-10
+assert response["fractional_delay_bits"] == 10
+assert response["hardware_latency_us"] == 0.44375
+assert (
+    request("state", RADAR_TEST_FRACTIONAL="1", RADAR_TEST_RATE="61440000")[1][
+        "hardware_latency_us"
+    ]
+    == 1.05625
+)
+assert abs(response["delay_step_us"] - 1 / (160 * 1024)) < 1e-12
+assert (
+    request(
+        "apply", fractional.replace(b"100 456", b"12276 456"), RADAR_TEST_FRACTIONAL="1"
+    )[0]
+    == 400
+)
+print("PASS: fractional register protocol, FPGA motion and coherent state readback")
+
+# Mode changes mute synchronously and finish asynchronously. The init script
+# (covered separately) owns readiness and hardware recalibration.
+mode_file = BUILD / "radio-mode"
+mode_file.unlink(missing_ok=True)
+service = BUILD / "mode-service.sh"
+service.write_text(f'#!/bin/sh\nprintf "%s" "$1" > "{BUILD / "mode-invocation"}"\n')
+for body in (b"fast", b"standard\n", b"standard;reboot", b"", b"overclocked x"):
+    assert request("mode", body)[0] == 400
+assert request("mode", b"standard", HTTP_ORIGIN="http://other.test")[0] == 403
+assert request("mode", b"standard", ready=False)[0] == 503
+for mode in ("standard", "overclocked"):
+    marker = BUILD / "mode-invocation"
+    marker.unlink(missing_ok=True)
+    code, response, hardware = request("mode", mode.encode())
+    assert code == 202 and hardware["mask"] == 0
+    assert not response["connected"] and response["muted"]
+    assert response["targets"] == [] and response["requested_radio_mode"] == mode
+    assert mode_file.read_text() == mode + "\n"
+    assert not (BUILD / "radar-ready").exists()
+    for _ in range(100):
+        if marker.exists(): break
+        time.sleep(.01)
+    assert marker.read_text() == "reconfigure"
+    assert request("state")[1]["requested_radio_mode"] == mode
+assert request("mode", b"standard", ready=False, failed=True)[0] == 202
+service.unlink()
+assert request("mode", b"standard")[0] == 503
+mode_file.unlink()
+print("PASS: validated persistent mode selection, immediate mute and detached restart")

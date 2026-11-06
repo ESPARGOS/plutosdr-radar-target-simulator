@@ -4,21 +4,21 @@ Uses pyespargos's existing calibrated IQ/accumulation APIs. Mutes both devices
 on exit. Raw captures are saved for independent inspection.
 """
 
-import argparse, json, os, queue, subprocess, sys, time
+import argparse, copy, json, os, queue, subprocess, sys, time
+import urllib.request
 from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "host"))
 from control import Controller
+from scene import encode_scene, validate
 
 p = argparse.ArgumentParser(description=__doc__)
 p.add_argument(
     "--pyespargos",
-    default=os.environ.get(
-        "PYESPARGOS_PATH",
-        str(Path(__file__).resolve().parents[2] / "ESPARGOS/pyespargos"),
-    ),
+    default=os.environ.get("PYESPARGOS_PATH"),
+    required=not os.environ.get("PYESPARGOS_PATH"),
 )
 p.add_argument(
     "--two-tone",
@@ -43,6 +43,11 @@ p.add_argument(
     choices=("both", "positive", "negative"),
     default="both",
     help="One-sided broadband pilots separate mirror leakage from the transfer response",
+)
+p.add_argument(
+    "--half-bin-pilots",
+    action="store_true",
+    help="Use uniformly spaced odd FFT bins with vector-chunks 2, avoiding an interior DC gap",
 )
 p.add_argument(
     "--capture-pluto-input",
@@ -133,12 +138,28 @@ p.add_argument(
     type=int,
     help="Requested RX/TX analog bandwidth in Hz; actual values are recorded",
 )
+p.add_argument(
+    "--pluto-tx-bandwidth", type=int, help="Override the TX filter bandwidth in Hz"
+)
 p.add_argument("--sample-rate", type=float, default=20e6)
+p.add_argument(
+    "--vector-chunks",
+    type=int,
+    choices=(1, 2, 4),
+    default=1,
+    help="OFDM period in 256-sample receiver chunks; longer periods extend unambiguous range",
+)
 p.add_argument(
     "--receiver-bandwidth-mhz",
     type=int,
     default=0,
     help="ESPARGOS analog RX filter for measurements; 0 keeps the MIMO demo open-filter configuration",
+)
+p.add_argument(
+    "--transmitter-bandwidth-mhz",
+    type=int,
+    default=20,
+    help="ESPARGOS analog TX filter bandwidth; 0 bypasses the filter",
 )
 p.add_argument("--frequency", type=float, default=2380e6)
 p.add_argument(
@@ -151,11 +172,27 @@ p.add_argument(
     action="store_true",
     help="Diagnostic FPGA source 10: bypass targets and tag echo with TX LO offset (requires diagnostic bitstream)",
 )
-p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST", "192.168.1.100"))
+p.add_argument("--host", default=os.environ.get("ESPARGOS_HOST"), required=not os.environ.get("ESPARGOS_HOST"))
 p.add_argument("--pluto", default=os.environ.get("PLUTO_HOST", "192.168.2.1"))
 p.add_argument("--seconds", type=float, default=4)
 p.add_argument("--output", default="build/measurement.npz")
 p.add_argument("--scene")
+sweep_arguments = p.add_mutually_exclusive_group()
+sweep_arguments.add_argument(
+    "--delay-sweep-samples",
+    type=float,
+    nargs="+",
+    help="Add these sample offsets to a single static target in sequence; --seconds applies to each step",
+)
+sweep_arguments.add_argument(
+    "--tx-gain-sweep-db", type=float, nargs="+",
+    help="Set these Pluto TX gains in sequence without recalibrating; --seconds applies to each step",
+)
+p.add_argument(
+    "--motion-upper-samples",
+    type=int,
+    help="Reflection boundary for moving scenes; defaults to the device limit",
+)
 p.add_argument(
     "--espargos-only",
     action="store_true",
@@ -165,7 +202,13 @@ p.add_argument("--amplitude", type=float, default=0.08)
 p.add_argument("--rx-gain", type=int, default=15)
 p.add_argument("--pluto-rx-gain", type=float, default=20)
 p.add_argument("--pluto-tx-attenuation", type=float, default=45)
+p.add_argument(
+    "--integer-motion-baseline",
+    action="store_true",
+    help="Use the ARM whole-sample baseline instead of FPGA motion; requires /tmp/radar-integer-baseline",
+)
 a = p.parse_args()
+integer_job = None
 if a.capture_pluto_input and a.capture_pluto_dma:
     p.error("Choose one Pluto ADC capture method")
 if a.adc_interval_seconds and (a.adc_interval_seconds < 0.5 or a.espargos_only):
@@ -186,14 +229,29 @@ if a.raw_burst_chunks and a.mimo:
     p.error("Raw bursts currently support single-transmitter captures")
 if not 0 < a.baseline_seconds <= 120:
     p.error("baseline-seconds must be in (0, 120]")
+if not 0 <= a.transmitter_bandwidth_mhz <= 60:
+    p.error("Transmitter bandwidth must be 0..60 MHz")
 if not 0 <= a.receiver_bandwidth_mhz <= 54:
     p.error("Receiver bandwidth must be 0..54 MHz")
 if a.receiver_bandwidth_mhz and not a.raw_burst_chunks:
     p.error(
         "Filtered receiver mode is for raw power measurements, not coherent calibrated captures"
     )
-if not 1 <= a.occupied_bins <= 120:
-    p.error("occupied-bins must be 1..120")
+if not 1 <= a.occupied_bins <= 128 * a.vector_chunks - 8:
+    p.error("occupied-bins must fit below the receiver Nyquist frequency")
+if a.half_bin_pilots and (
+    a.vector_chunks != 2 or a.mimo or a.two_tone or a.occupied_bins > 120
+):
+    p.error("half-bin-pilots requires vector-chunks 2, at most 120 bins per side, and single-transmitter OFDM")
+if a.vector_chunks != 1 and (a.mimo or a.raw_burst_chunks or a.two_tone):
+    p.error("Long OFDM vectors currently require single-transmitter coherent capture")
+replay_samples = round(256 * a.vector_chunks * 80e6 / a.sample_rate)
+if (
+    replay_samples > 8192
+    or replay_samples < 256
+    or replay_samples & (replay_samples - 1)
+):
+    p.error("The requested sample rate and vector length exceed ESPARGOS replay limits")
 if len(set(a.tone_bins)) != 2 or any(not 1 <= b <= 110 for b in a.tone_bins):
     p.error("tone-bins must be two distinct bins in 1..110")
 sys.path.insert(0, a.pyespargos)
@@ -255,6 +313,52 @@ if a.two_tone and a.mimo:
 if a.direct_loopback and (a.espargos_only or a.scene):
     p.error("--direct-loopback requires Pluto and supplies its own scene")
 scene = json.loads(Path(a.scene).read_text()) if a.scene else {}
+motion_mask = sum(
+    1 << index
+    for index, target in enumerate(scene.get("targets", []))
+    if target.get("realistic_movement", False)
+)
+if a.integer_motion_baseline:
+    if len(scene.get("targets", [])) != 1 or motion_mask != 1 or a.seconds > 110:
+        p.error("The integer baseline needs one moving target and at most 110 seconds")
+    position = scene["targets"][0]["delay_us"] * a.pluto_sample_rate / 1e6
+    if abs(position - round(position)) > 1e-8:
+        p.error("Start the integer baseline at a whole-sample delay")
+if a.tx_gain_sweep_db is not None:
+    if not a.scene or motion_mask or a.espargos_only or a.direct_loopback:
+        p.error("A TX gain sweep requires a static target scene on Pluto")
+    if any(not np.isfinite(g) or not -89.75 <= g <= 0 or g * 4 != round(g * 4)
+           for g in a.tx_gain_sweep_db):
+        p.error("TX gains must be -89.75..0 dB in 0.25 dB steps")
+sweep_values = a.delay_sweep_samples if a.delay_sweep_samples is not None else a.tx_gain_sweep_db
+trajectory = []
+segments = []
+segment_ids = []
+if a.delay_sweep_samples is not None:
+    if len(scene.get("targets", [])) != 1 or motion_mask or a.direct_loopback:
+        p.error("A delay sweep requires one static target")
+    if not all(np.isfinite(a.delay_sweep_samples)):
+        p.error("Delay sweep offsets must be finite")
+
+
+def sweep_scene(index):
+    result = copy.deepcopy(scene)
+    result["targets"][0]["delay_us"] += (
+        a.delay_sweep_samples[index] * 1e6 / a.pluto_sample_rate
+    )
+    return result
+
+
+def device_api(endpoint, payload=None):
+    request = urllib.request.Request(
+        f"http://{a.pluto}/cgi-bin/radar.cgi/{endpoint}",
+        data=payload.encode() if payload is not None else None,
+        headers={"Content-Type": "text/plain"},
+    )
+    with urllib.request.urlopen(request, timeout=6) as response:
+        return json.load(response)
+
+
 radio = None
 radio_profile = {}
 qec_decimation_saved = None
@@ -292,6 +396,13 @@ def dma_snapshot():
 if not a.espargos_only:
     ctrl.mute()
     radio = adi.Pluto("ip:" + a.pluto)
+    # A passing PN check does not prove that normal RF routing was restored.
+    for attribute in ("bist_prbs", "loopback", "bist_tone"):
+        if int(radio._ctrl.debug_attrs[attribute].value.split()[0]) != 0:
+            raise RuntimeError(f"Disable diagnostic {attribute} before RF measurements")
+    for channel in (0x418, 0x458):
+        if radio._txdac.reg_read(channel) != 2:
+            raise RuntimeError("TX is not routed through the radar FPGA datapath")
     # pyadi's sample_rate setter installs/enables a 128-tap FIR. Use the
     # same FIR-bypassed hardware profile as firmware for latency comparisons.
     if a.keep_radio_profile:
@@ -315,13 +426,19 @@ if not a.espargos_only:
     if a.pluto_bandwidth is not None:
         radio.rx_rf_bandwidth = a.pluto_bandwidth
         radio.tx_rf_bandwidth = a.pluto_bandwidth
+    if a.pluto_tx_bandwidth is not None:
+        radio.tx_rf_bandwidth = a.pluto_tx_bandwidth
     radio.rx_lo = int(a.frequency) + a.pluto_lo_offset_hz
     radio.tx_lo = (
         int(a.frequency) + a.pluto_lo_offset_hz + (17 if a.direct_loopback else 0)
     )
     radio.gain_control_mode_chan0 = "manual"
     radio.rx_hardwaregain_chan0 = a.pluto_rx_gain
-    radio.tx_hardwaregain_chan0 = -a.pluto_tx_attenuation
+    initial_tx_gain = (a.tx_gain_sweep_db[0] if a.tx_gain_sweep_db is not None
+                       else -a.pluto_tx_attenuation)
+    radio.tx_hardwaregain_chan0 = initial_tx_gain
+    if abs(radio.tx_hardwaregain_chan0 - initial_tx_gain) > .01:
+        raise RuntimeError("Pluto TX gain readback differs from the requested setting")
     radio_profile = {
         key: radio._ctrl.attrs[key].value for key in ("rx_path_rates", "tx_path_rates")
     }
@@ -365,22 +482,25 @@ if a.mimo:
     sys.path.insert(0, str(Path(a.pyespargos) / "demos/iq/mimo-radar"))
     from mimo_processing import MIMOProcessor, pilots
 else:
-    if a.sample_rate != 20e6 and not (
-        a.source_off and a.raw_burst_chunks and a.sample_rate in (40e6, 80e6)
-    ):
-        p.error(
-            "Non-MIMO signals require 20 MSa/s; raw source-off noise tests also support 40/80 MSa/s"
-        )
+    if a.sample_rate not in (4e6, 8e6, 10e6, 20e6, 40e6, 80e6):
+        p.error("Non-MIMO signals require 4, 8, 10, 20, 40 or 80 MSa/s")
     rng = np.random.default_rng(3)
     bins = (
         np.array(a.tone_bins)
         if a.two_tone
         else np.r_[np.arange(-a.occupied_bins, 0), np.arange(1, a.occupied_bins + 1)]
     )
+    if a.half_bin_pilots:
+        # Odd bins of a doubled vector form a uniform grid across DC. There
+        # is no missing carrier in that grid; the waveform changes sign at
+        # its midpoint, so the receiver must accumulate the complete vector.
+        bins = np.arange(-2 * a.occupied_bins + 1, 2 * a.occupied_bins, 2)
     if a.spectral_side != "both":
         bins = bins[bins > 0] if a.spectral_side == "positive" else bins[bins < 0]
-    spectrum = np.zeros(1024, complex)
-    spectrum[bins % 1024] = np.exp(1j * np.pi / 2 * rng.integers(0, 4, len(bins)))
+    spectrum = np.zeros(replay_samples, complex)
+    spectrum[bins % replay_samples] = np.exp(
+        1j * np.pi / 2 * rng.integers(0, 4, len(bins))
+    )
     wave = np.fft.ifft(spectrum)
     wave /= max(abs(wave))
     reference = np.fft.fft(wave[:: round(80e6 / a.sample_rate)])
@@ -436,10 +556,10 @@ try:
             mode="iq_tx",
             frequency_hz=a.frequency,
             rf_gain={"a": 2 if a.mimo else 0, "b": 0},
-            bandwidth_mhz=0,
+            bandwidth_mhz=a.transmitter_bandwidth_mhz,
             output="antenna_r",
         )
-        with tx.update(samples=processor.tx_samples if a.mimo else 1024):
+        with tx.update(samples=processor.tx_samples if a.mimo else replay_samples):
             for antenna, waveform in zip(
                 tx_antennas, pilots(a.sample_rate) if a.mimo else [IQSamples(wave)]
             ):
@@ -463,7 +583,11 @@ try:
                 "interval_chunks": interval,
             }
             if a.raw_burst_chunks
-            else {"mode": "accumulate", "vector_chunks": 1, "interval_chunks": interval}
+            else {
+                "mode": "accumulate",
+                "vector_chunks": a.vector_chunks,
+                "interval_chunks": interval,
+            }
         )
         pool.iq.apply_config({"trigger": trigger})
 
@@ -537,7 +661,38 @@ try:
             baseline.append(iq)
             baseline_ticks.append(tick)
         if a.scene:
-            ctrl.apply(scene)
+            if motion_mask and not a.integer_motion_baseline:
+                ctrl.call("status")
+                status = device_api("state")
+                upper = a.motion_upper_samples or round(
+                    status["max_delay_us"] * status["sample_rate_hz"] / 1e6
+                )
+                wire = encode_scene(
+                    validate(
+                        scene, ctrl.args.sample_rate, ctrl.fraction_bits, ctrl.max_delay
+                    )
+                )
+                device_api("apply", f"motion {motion_mask} 15 15 {upper}\n{wire}")
+            else:
+                ctrl.apply(
+                    sweep_scene(0) if a.delay_sweep_samples is not None else scene
+                )
+            if a.integer_motion_baseline:
+                integer_job = subprocess.Popen(
+                    [
+                        "sshpass",
+                        "-e",
+                        "ssh",
+                        "-o",
+                        f"UserKnownHostsFile={ROOT}/build/known_hosts",
+                        f"root@{a.pluto}",
+                        "/tmp/radar-integer-baseline",
+                    ],
+                    env={
+                        **os.environ,
+                        "SSHPASS": os.environ.get("PLUTO_PASSWORD", "analog"),
+                    },
+                )
             print("Recording programmed targets", flush=True)
         if a.pluto_bist_tone is not None:
             radio._ctrl.debug_attrs["bist_tone"].value = f"1 {a.pluto_bist_tone} 0 0"
@@ -560,15 +715,67 @@ try:
             radio_profile["rx_filter_power_start"] = radio._ctrl.reg_read(0x161)
         while not q.empty():
             q.get_nowait()
-        deadline = time.monotonic() + a.seconds
+        recording_start = time.monotonic()
+        segment = 0
+        segment_count = len(sweep_values) if sweep_values is not None else 1
+        sweep_field = "offset_samples" if a.delay_sweep_samples is not None else "tx_gain_db"
+        deadline = recording_start + a.seconds * segment_count
+        next_segment = recording_start + a.seconds
+        if sweep_values is not None:
+            segments.append(dict(index=0, start_s=0.0, **{sweep_field: sweep_values[0]}))
+        next_trajectory = recording_start
         next_offset_check = time.monotonic()
         offset_tracking = []
         while time.monotonic() < deadline:
             if (
+                sweep_values is not None
+                and time.monotonic() >= next_segment
+                and segment + 1 < segment_count
+            ):
+                segment += 1
+                if a.delay_sweep_samples is not None:
+                    ctrl.apply(sweep_scene(segment))
+                else:
+                    radio.tx_hardwaregain_chan0 = sweep_values[segment]
+                    if abs(radio.tx_hardwaregain_chan0 - sweep_values[segment]) > .01:
+                        raise RuntimeError("TX gain readback differs from the requested value")
+                # Exclude old and partially accumulated windows after each edit.
+                time.sleep(0.3)
+                while not q.empty():
+                    q.get_nowait()
+                segments.append(
+                    dict(
+                        index=segment,
+                        start_s=time.monotonic() - recording_start,
+                        **{sweep_field: sweep_values[segment]},
+                    )
+                )
+                next_segment = recording_start + (segment + 1) * a.seconds
+                print(
+                    f"Sweep {segment + 1}/{segment_count}: {sweep_field}={sweep_values[segment]:g}",
+                    flush=True,
+                )
+            if (
+                motion_mask
+                and not a.integer_motion_baseline
+                and time.monotonic() >= next_trajectory
+            ):
+                before = time.monotonic()
+                state = device_api("state")
+                after = time.monotonic()
+                trajectory.append(
+                    dict(
+                        time_s=(before + after) / 2 - recording_start,
+                        read_duration_s=after - before,
+                        targets=state["targets"],
+                    )
+                )
+                next_trajectory = after + 0.2
+            if (
                 a.align_image_grid or a.adc_interval_seconds
             ) and time.monotonic() >= next_offset_check:
                 sample, _ = dma_snapshot()
-                elapsed = a.seconds - (deadline - time.monotonic())
+                elapsed = time.monotonic() - recording_start
                 if a.adc_interval_seconds:
                     adc_snapshots.append(sample)
                     adc_snapshot_times.append(elapsed)
@@ -591,6 +798,7 @@ try:
                     "Receiver overload during native TX tone; repeat with more TX attenuation"
                 )
             ticks.append(tick)
+            segment_ids.append(segment)
             frames.append(iq)
             peaks.append(peak)
         if a.align_image_grid:
@@ -658,6 +866,8 @@ finally:
                 radio.tx_hardwaregain_chan0 = -60
                 if a.direct_loopback:
                     radio.tx_lo = radio.rx_lo
+if integer_job is not None and integer_job.wait(timeout=10) != 0:
+    raise RuntimeError("Whole-sample motion baseline failed")
 if len(frames) < 20:
     raise RuntimeError("Insufficient accumulated IQ")
 path = Path(a.output)
@@ -678,6 +888,9 @@ np.savez_compressed(
     capture_settings=json.dumps(vars(a)),
     radio_profile=json.dumps(radio_profile),
     scene=json.dumps(scene),
+    trajectory=json.dumps(trajectory),
+    segments=json.dumps(segments),
+    segment_ids=np.array(segment_ids),
     pluto_input=pluto_input,
     pluto_input_error=json.dumps(pluto_input_error),
     adc_snapshots=np.array(adc_snapshots),

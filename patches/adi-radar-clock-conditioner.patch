@@ -131,10 +131,12 @@
 +set_property SLEW FAST [get_ports {tx_clk_out tx_frame_out tx_data_out[*]}]
 --- a/projects/pluto/system_project.tcl
 +++ b/projects/pluto/system_project.tcl
-@@ -15,6 +15,8 @@
+@@ -15,6 +15,10 @@
    "$ad_hdl_dir/library/common/ad_iobuf.v"]
  
  set_property is_enabled false [get_files  *system_sys_ps7_0.xdc]
++set_property strategy Performance_Explore [get_runs impl_1]
++set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE ExploreArea [get_runs impl_1]
 +set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED true [get_runs impl_1]
 +set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
  adi_project_run pluto

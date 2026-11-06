@@ -39,14 +39,14 @@ for f in (root / "rtl").iterdir():
     write_if_changed(ip / f.name, f.read_text())
 write_if_changed(
     ip / "Makefile",
-    "LIBRARY_NAME := radar_axi\nGENERIC_DEPS += radar_axi.sv target_bank.sv nco_rom.v\nXILINX_DEPS += radar_axi_ip.tcl radar_cdc.xdc\ninclude ../scripts/library.mk\n",
+    "LIBRARY_NAME := radar_axi\nGENERIC_DEPS += radar_axi.sv target_bank.sv target_motion.sv fractional_delay.sv fractional_rom.sv nco_rom.v\nXILINX_DEPS += radar_axi_ip.tcl radar_cdc.xdc\ninclude ../scripts/library.mk\n",
 )
 write_if_changed(
     ip / "radar_axi_ip.tcl",
     """source ../../scripts/adi_env.tcl
 source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
 adi_ip_create radar_axi
-adi_ip_files radar_axi [list radar_axi.sv target_bank.sv nco_rom.v radar_cdc.xdc]
+adi_ip_files radar_axi [list radar_axi.sv target_bank.sv target_motion.sv fractional_delay.sv fractional_rom.sv nco_rom.v radar_cdc.xdc]
 adi_ip_properties radar_axi
 ipx::save_core [ipx::current_core]
 """,
@@ -116,3 +116,19 @@ foreach chan {i0 q0} output {dac_i dac_q} {
 ad_cpu_interconnect 0x43c00000 radar_targets
 """
 write_if_changed(p, s)
+p = hdl / "projects/pluto/system_project.tcl"
+s = p.read_text()
+if "# RADAR ROM PACKING" not in s:
+    s = s.replace(
+        "\nadi_project_files pluto",
+        """
+# RADAR ROM PACKING
+# The preliminary estimate counts each ROM read port separately. Allow
+# synthesis to combine the ports before implementation checks physical limits.
+foreach run [get_runs -quiet {system_radar_targets_0_synth_1 synth_1}] {
+  set_property STEPS.SYNTH_DESIGN.ARGS.MAX_BRAM 160 $run
+}
+
+adi_project_files pluto""",
+    )
+    write_if_changed(p, s)

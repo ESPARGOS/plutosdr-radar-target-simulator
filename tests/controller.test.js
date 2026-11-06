@@ -161,27 +161,29 @@ test("failed writes stay visible without an automatic retry loop", async (t) => 
   assert.equal(calls, 1);
 });
 
-test("failed retune reads hardware back without resending an enabled scene", async (t) => {
-  let applied = false;
-  const controller = setup(t, {
-    carrier: async () => {
-      throw Error("retune failed");
-    },
-    state: async () => ({ ...snapshot(), targets: [{ ...target, enabled: false }] }),
-    apply: async () => {
-      applied = true;
-      return snapshot();
-    },
+for (const [operation, value] of [["carrier", 2400e6], ["bandwidth", 56e6]]) {
+  test(`failed ${operation} change reads hardware back without enabling targets`, async (t) => {
+    let applied = false;
+    const controller = setup(t, {
+      [operation]: async () => {
+        throw Error("radio change failed");
+      },
+      state: async () => ({ ...snapshot(), targets: [{ ...target, enabled: false }] }),
+      apply: async () => {
+        applied = true;
+        return snapshot();
+      },
+    });
+    controller.edit((targets) => {
+      targets[0].delay_us = 2;
+    });
+    await controller[operation](value);
+    assert.equal(controller.targets[0].enabled, false);
+    assert.equal(controller.error, "radio change failed");
+    assert.equal(controller.dirty, false);
+    assert.equal(applied, false);
   });
-  controller.edit((targets) => {
-    targets[0].delay_us = 2;
-  });
-  await controller.carrier(2400e6);
-  assert.equal(controller.targets[0].enabled, false);
-  assert.equal(controller.error, "retune failed");
-  assert.equal(controller.dirty, false);
-  assert.equal(applied, false);
-});
+}
 
 test("an edit to one target does not overwrite another moving trajectory", async (t) => {
   const calls = [];
@@ -234,4 +236,43 @@ test("startup progress keeps controls disabled until a successful readback", asy
   assert.equal(controller.startup, null);
   assert.equal(controller.error, "");
   assert.equal(controller.canEdit, true);
+});
+
+test("a stale muted poll cannot disable a newer visibility edit", async (t) => {
+  const pending = deferred();
+  const controller = setup(t, { state: () => pending.promise });
+  controller.targets[0].enabled = false;
+  const poll = controller.refresh();
+  await tick();
+  controller.edit((targets) => {
+    targets[0].enabled = true;
+  });
+  pending.resolve({ ...snapshot(), muted: true, targets: [{ ...target, enabled: false }] });
+  await poll;
+  assert.equal(controller.targets[0].enabled, true);
+  assert.equal(controller.dirty, true);
+});
+
+
+test("mode switch cancels edits and waits for calibrated state before allowing new targets", async (t) => {
+  let writes = 0;
+  const controller = setup(t, {
+    apply: async () => { writes++; return snapshot(); },
+    radioMode: async (mode) => ({
+      connected: false, muted: true, targets: [], requested_radio_mode: mode,
+      error: "Restarting the radio",
+    }),
+  });
+  controller.edit((targets) => { targets[0].delay_us = 2; });
+  await controller.radioMode("standard");
+  await controller.flush();
+  assert.equal(writes, 0);
+  assert.equal(controller.canEdit, false);
+  assert.equal(controller.targets.length, 0);
+  assert.equal(controller.dirty, false);
+  controller.api.state = async () => ({ ...snapshot(), sample_rate_hz: 61.44e6, targets: [] });
+  await controller.refresh();
+  assert.equal(controller.canEdit, true);
+  assert.equal(controller.state.sample_rate_hz, 61.44e6);
+  assert.equal(controller.targets.length, 0);
 });

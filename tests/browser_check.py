@@ -74,7 +74,8 @@ js(
     "app.plot.select(0);document.getElementById('range').value=(sceneModel.latency(app.controller.state)+7.123)*sceneModel.METERS_PER_US;document.getElementById('range').dispatchEvent(new Event('change'));document.getElementById('doppler').value=-31.25;document.getElementById('doppler').dispatchEvent(new Event('change'))"
 )
 time.sleep(0.5)
-assert abs(js("app.controller.targets[0].delay_us") - 7.125) < 1e-7
+assert js("app.controller.state.fractional_delay_bits") == 10
+assert abs(js("app.controller.targets[0].delay_us") - 7.122998046875) < 1e-9
 assert js("document.getElementById('visible').getAttribute('aria-pressed')==='true'")
 js("document.getElementById('visible').click()")
 time.sleep(0.3)

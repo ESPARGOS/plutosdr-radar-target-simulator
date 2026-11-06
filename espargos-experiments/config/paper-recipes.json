@@ -1,0 +1,1165 @@
+{
+  "packed-array-reference": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 1024,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 20000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 11.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-range": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 400,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 512,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 10000000.0,
+      "vector_chunks": 4,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 120.0,
+      "amplitude": 0.9,
+      "rx_gain": 31,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 39.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 3.2,
+          "doppler_hz": -17,
+          "gain_db": -14,
+          "enabled": true
+        },
+        {
+          "delay_us": 25.59375,
+          "doppler_hz": -11,
+          "gain_db": -14,
+          "enabled": true
+        },
+        {
+          "delay_us": 51.19375,
+          "doppler_hz": 11,
+          "gain_db": -14,
+          "enabled": true
+        },
+        {
+          "delay_us": 76.725,
+          "doppler_hz": 17,
+          "gain_db": -14,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "trajectory-gap-free-reference": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "half_bin_pilots": true,
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 2,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 16.0,
+      "amplitude": 0.75,
+      "rx_gain": 28,
+      "pluto_rx_gain": 25.0,
+      "pluto_tx_attenuation": 16.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0.9,
+          "doppler_hz": 17,
+          "gain_db": -6,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "trajectory-gap-free": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 2,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 250.0,
+      "motion_upper_samples": 467,
+      "amplitude": 0.75,
+      "rx_gain": 28,
+      "pluto_rx_gain": 25.0,
+      "pluto_tx_attenuation": 16.0,
+      "half_bin_pilots": true
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0.586629785594456,
+          "doppler_hz": -31.822014681903706,
+          "gain_db": -6,
+          "enabled": true,
+          "realistic_movement": true
+        },
+        {
+          "delay_us": 2.2544502615852164,
+          "doppler_hz": 23.86651101142778,
+          "gain_db": -6,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "v28-feedback-gain": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 6.0,
+      "tx_gain_sweep_db": [
+        -12.0,
+        -15.0,
+        -18.0,
+        -21.0,
+        -24.0,
+        -21.0,
+        -18.0,
+        -15.0,
+        -12.0
+      ],
+      "amplitude": 0.75,
+      "rx_gain": 28,
+      "pluto_rx_gain": 25.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0.9,
+          "doppler_hz": 17,
+          "gain_db": -6,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-feedback-low-source": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "tx_gain_sweep_db": [
+        -12.0,
+        -18.0,
+        -24.0,
+        -18.0,
+        -12.0
+      ],
+      "amplitude": 0.375,
+      "rx_gain": 28,
+      "pluto_rx_gain": 25.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0.9,
+          "doppler_hz": 17,
+          "gain_db": -6,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-clean-sweep-1": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 35.0,
+      "pluto_tx_attenuation": 6.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 1,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-clean-sweep-2": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 35.0,
+      "pluto_tx_attenuation": 6.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 1,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-clean-sweep-3": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 35.0,
+      "pluto_tx_attenuation": 6.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 1,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-clean-sweep-4": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 35.0,
+      "pluto_tx_attenuation": 6.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 1,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-clean-sweep-5": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 35.0,
+      "pluto_tx_attenuation": 6.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 1,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-integer-1": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0,
+      "integer_motion_baseline": true
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-fractional-1": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-static-1": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-static-2": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "review-fractional-2": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-integer-2": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0,
+      "integer_motion_baseline": true
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-fractional-3": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-integer-3": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0,
+      "integer_motion_baseline": true
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true,
+          "realistic_movement": true
+        }
+      ]
+    }
+  },
+  "review-static-3": {
+    "options": {
+      "two_tone": true,
+      "tone_bins": [
+        13,
+        110
+      ],
+      "occupied_bins": 90,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 30.0,
+      "motion_upper_samples": 1800,
+      "amplitude": 0.15,
+      "rx_gain": 15,
+      "pluto_rx_gain": 40.0,
+      "pluto_tx_attenuation": 5.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 40,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-final-zero20": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 120,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 20000000,
+      "sample_rate": 20000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-final-zero56": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 88,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 1,
+      "pluto_sample_rate": 160000000.0,
+      "pluto_bandwidth": 56000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 56,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-zero-standard20": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 32,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 0,
+      "pluto_sample_rate": 61440000.0,
+      "pluto_bandwidth": 20000000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 20,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-zero-standard30": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 48,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 0,
+      "pluto_sample_rate": 61440000.0,
+      "pluto_bandwidth": 30720000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 40,
+      "frequency": 2385000000.0,
+      "seconds": 8.0,
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 0,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  },
+  "v28-sweep-standard30": {
+    "options": {
+      "tone_bins": [
+        13,
+        31
+      ],
+      "occupied_bins": 48,
+      "spectral_side": "both",
+      "adc_samples": 65536,
+      "pluto_lo_offset_hz": 0,
+      "raw_burst_chunks": 0,
+      "baseline_seconds": 2,
+      "accumulation_chunks": 64,
+      "keep_radio_profile": true,
+      "expected_fir_enabled": 0,
+      "pluto_sample_rate": 61440000.0,
+      "pluto_bandwidth": 30720000,
+      "sample_rate": 80000000.0,
+      "vector_chunks": 1,
+      "receiver_bandwidth_mhz": 0,
+      "transmitter_bandwidth_mhz": 40,
+      "frequency": 2385000000.0,
+      "seconds": 4.0,
+      "delay_sweep_samples": [
+        0.0,
+        0.125,
+        0.25,
+        0.375,
+        0.5,
+        0.625,
+        0.75,
+        0.875,
+        1.0,
+        0.875,
+        0.75,
+        0.625,
+        0.5,
+        0.375,
+        0.25,
+        0.125,
+        0.0
+      ],
+      "amplitude": 0.6,
+      "rx_gain": 25,
+      "pluto_rx_gain": 30.0,
+      "pluto_tx_attenuation": 12.0
+    },
+    "scene": {
+      "targets": [
+        {
+          "delay_us": 6.25,
+          "doppler_hz": 17,
+          "gain_db": -10,
+          "enabled": true
+        }
+      ]
+    }
+  }
+}

@@ -10,9 +10,9 @@ echo -60 > "$phy/out_voltage0_hardwaregain"
 # A service restart can begin in the fast profile. Restore its calibrated clock
 # chain before asking the driver's FIR validator to select the normal profile.
 if [ -f /tmp/radar-fast-recovery ]; then
- restore=/usr/bin/radar-radio-fast
- [ -x "$restore" ] || restore=/tmp/radio_fast_setup.sh
- sh "$restore" restore
+ restore=/tmp/radio_fast_setup.sh
+ [ -x "$restore" ] || restore=/usr/bin/radar-radio-fast
+ RADAR_DEFER_TUNING=1 sh "$restore" restore
 fi
 version=$(devmem 0x43c00004)
 case "$version" in

@@ -9,8 +9,18 @@
     "name": "half-sample rounding, signed phase and full-scale gain",
     "sample_rate_hz": 20000000,
     "targets": [
-      {"enabled": true, "delay_us": 0.025, "doppler_hz": -0.004656612873077393, "gain_db": 0},
-      {"enabled": false, "delay_us": 102.35, "doppler_hz": 0.004656612873077393, "gain_db": -90}
+      {
+        "enabled": true,
+        "delay_us": 0.025,
+        "doppler_hz": -0.004656612873077393,
+        "gain_db": 0
+      },
+      {
+        "enabled": false,
+        "delay_us": 102.35,
+        "doppler_hz": 0.004656612873077393,
+        "gain_db": -90
+      }
     ],
     "wire": "1\n1 4294967295 32767\n2047 1 1\n0 0 0\n0 0 0"
   },
@@ -18,8 +28,33 @@
     "name": "negative half-step rounds toward positive infinity",
     "sample_rate_hz": 20000000,
     "targets": [
-      {"enabled": true, "delay_us": 0, "doppler_hz": -0.0023283064365386963, "gain_db": -6.020599913279624}
+      {
+        "enabled": true,
+        "delay_us": 0,
+        "doppler_hz": -0.0023283064365386963,
+        "gain_db": -6.020599913279624
+      }
     ],
     "wire": "1\n0 0 16384\n0 0 0\n0 0 0\n0 0 0"
+  },
+  {
+    "name": "fractional positions and carry to next sample",
+    "sample_rate_hz": 160000000,
+    "fractional_delay_bits": 10,
+    "targets": [
+      {
+        "enabled": true,
+        "delay_us": 0.0640625,
+        "doppler_hz": 0,
+        "gain_db": 0
+      },
+      {
+        "enabled": true,
+        "delay_us": 0.07499875,
+        "doppler_hz": 0,
+        "gain_db": 0
+      }
+    ],
+    "wire": "fractional\n3\n10 0 32767 16384\n12 0 32767 0\n0 0 0 0\n0 0 0 0"
   }
 ]

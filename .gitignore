@@ -2,6 +2,9 @@
 /vendor/
 /build/
 /.Xil/
+/clockInfo.txt
+# Recreated by make prepare from the fractional-delay coefficient generator
+/rtl/fractional_rom.sv
 __pycache__/
 *.py[cod]
 *.log

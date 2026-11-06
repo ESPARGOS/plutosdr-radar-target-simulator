@@ -132,6 +132,9 @@ main {
   width: 180px;
   flex-shrink: 0;
 }
+.bandwidth-control .input-unit {
+  margin-top: 5px;
+}
 .radio-gains {
   display: flex;
   gap: 16px;
@@ -747,4 +750,23 @@ svg .axis-title:focus-visible {
   transition:
     r 0.12s ease,
     opacity 0.12s ease;
+}
+
+.mode-control {
+  display: grid;
+  gap: 6px;
+}
+.mode-control select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--panel);
+  font: inherit;
+}
+.mode-note {
+  color: var(--muted);
+  font-size: 0.9rem;
 }

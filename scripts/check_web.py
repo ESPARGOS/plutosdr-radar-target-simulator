@@ -4,6 +4,7 @@
 import argparse
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -59,7 +60,7 @@ def main():
     )
     if not browser:
         raise SystemExit("Install Chromium or set CHROMIUM_BIN")
-    scratch = Path(os.environ.get("RTS_SCRATCH_DIR", ROOT / "build/scratch")).resolve()
+    scratch = Path(os.environ.get("RTS_SCRATCH_DIR", os.environ.get("TMPDIR", ROOT / "build/scratch"))).resolve()
     scratch.mkdir(parents=True, exist_ok=True)
     logs = ROOT / "build/tests"
     logs.mkdir(parents=True, exist_ok=True)
@@ -91,6 +92,7 @@ def main():
                         env=env,
                         stdout=server_log,
                         stderr=subprocess.STDOUT,
+                        start_new_session=True,
                     )
                     processes.append(server)
                     ready(base + "/api/state", server, logs / "preview-server.log")
@@ -108,6 +110,7 @@ def main():
                     env=env,
                     stdout=browser_log,
                     stderr=subprocess.STDOUT,
+                    start_new_session=True,
                 )
                 processes.append(browser_process)
                 ready(
@@ -130,12 +133,21 @@ def main():
                 )
             finally:
                 for process in reversed(processes):
-                    process.terminate()
+                    # Chromium has child processes which can still write to its
+                    # profile after the parent exits. Stop the whole test group.
+                    try:
+                        os.killpg(process.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
                     try:
                         process.wait(timeout=10)
                     except subprocess.TimeoutExpired:
-                        process.kill()
+                        os.killpg(process.pid, signal.SIGKILL)
                         process.wait()
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
 
 
 if __name__ == "__main__":

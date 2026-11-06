@@ -12,7 +12,11 @@ static const char *names[] = {"in_voltage_sampling_frequency",
                               "in_voltage0_hardwaregain_available",
                               "out_voltage0_hardwaregain_available",
                               "in_voltage0_gain_control_mode",
-                              "in_out_voltage_filter_fir_en"};
+                              "in_out_voltage_filter_fir_en",
+                              "out_altvoltage0_RX_LO_frequency_available",
+                              "out_altvoltage1_TX_LO_frequency_available",
+                              "in_voltage_rf_bandwidth_available",
+                              "out_voltage_rf_bandwidth_available"};
 static int index_of(const char *name) {
     for (unsigned i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
         if (!strcmp(name, names[i]))
@@ -33,6 +37,12 @@ static void write_register(void *context, unsigned index, uint32_t value) {
     fake_device *fake = context;
     ++fake->register_writes;
     fake->registers[index] = value;
+    uint32_t version = fake->registers[RADAR_REG_VERSION];
+    if (index == RADAR_REG_COMMIT && version >= 0x20000 && version <= 0x20002 && (value & 4)) {
+        for (unsigned i = 0; i < 16; ++i)
+            fake->registers[RADAR_REG_SNAPSHOT + i] = fake->registers[RADAR_REG_TARGET_BASE + i];
+        fake->registers[RADAR_REG_STATUS] = 0;
+    }
 }
 static int read_attribute(void *context, const char *name, char *value, size_t size) {
     fake_device *fake = context;
@@ -68,6 +78,7 @@ void fake_init(fake_device *fake, radar_device *device) {
     *device = (radar_device){.io = &io, .context = fake};
     fake->registers[RADAR_REG_SIGNATURE] = RADAR_SIGNATURE;
     fake->registers[RADAR_REG_VERSION] = 0x10010;
+    fake->registers[RADAR_REG_MAX_DELAY] = 2047;
     fake->registers[RADAR_REG_ENABLE] = 15;
     for (unsigned i = 0; i < RADAR_TARGETS; ++i) {
         fake->registers[RADAR_REG_TARGET_BASE + 4 * i] = i * 80;
@@ -75,7 +86,9 @@ void fake_init(fake_device *fake, radar_device *device) {
     }
     const char *defaults[] = {"159999999",       "2380000000",  "2380000000", "20000000",
                               "20000000",        "35",          "-25",        "[-3 1 71]",
-                              "[-89.75 0.25 0]", "slow_attack", "0"};
+                              "[-89.75 0.25 0]", "slow_attack", "0",
+                              "[325000000 1 3800000000]", "[325000000 1 3800000000]",
+                              "[200000 1 20000000]", "[200000 1 20000000]"};
     for (unsigned i = 0; i < sizeof(defaults) / sizeof(defaults[0]); ++i)
         snprintf(fake->values[i], sizeof(fake->values[i]), "%s", defaults[i]);
 }

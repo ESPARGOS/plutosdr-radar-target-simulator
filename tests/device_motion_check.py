@@ -81,7 +81,7 @@ try:
     frozen = request("apply", "motion 0 0 0 100\n15\n" + "\n".join(rows))
     time.sleep(0.3)
     assert request("state")["targets"] == frozen["targets"]
-    # Mute pauses motion and cannot be undone by the background worker.
+    # Mute pauses all sample-clock trajectories.
     request("apply", "motion 15 15 15 100\n15\n" + "\n".join(rows))
     muted = request("mute", "")
     time.sleep(0.3)

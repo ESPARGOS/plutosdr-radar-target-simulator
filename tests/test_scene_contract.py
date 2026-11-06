@@ -9,7 +9,13 @@ sys.path.insert(0, str(ROOT / "host"))
 from scene import validate, encode_scene, parse_registers
 
 for fixture in json.loads((ROOT / "tests/scene-contract.json").read_text()):
-    encoded = encode_scene(validate(fixture, fixture["sample_rate_hz"]))
+    encoded = encode_scene(
+        validate(
+            fixture, fixture["sample_rate_hz"], fixture.get("fractional_delay_bits", 0)
+        )
+    )
     assert encoded == fixture["wire"], fixture["name"]
-    assert parse_registers(encoded)["mask"] == int(fixture["wire"].splitlines()[0])
+    assert parse_registers(encoded)["mask"] == int(
+        fixture["wire"].splitlines()[1 if fixture.get("fractional_delay_bits") else 0]
+    )
 print("PASS: shared scene contract, signed/half-step rounding and preview wire format")

@@ -21,6 +21,14 @@
         <section class="radio-panel inspector">
           <div class="panel-head"><h2>Radio</h2></div>
           <div class="radio-bar">
+            <label id="mode-control" class="mode-control" hidden>
+              Operating mode
+              <select id="radio-mode" aria-label="Operating mode" title="Restarts the radio, clears targets and resets bandwidth to 20 MHz. Carrier and radio gains are preserved.">
+                <option value="overclocked">Overclocked · 160 MSa/s</option>
+                <option value="standard">Standard · 61.44 MSa/s</option>
+              </select>
+              <span class="mode-note">Changing mode clears targets.</span>
+            </label>
             <form id="carrier-form" class="carrier-form" hidden>
               <label for="carrier-input">Carrier</label>
               <div class="input-unit">
@@ -36,6 +44,10 @@
                 /><span>MHz</span>
               </div>
             </form>
+            <label id="bandwidth-control" class="bandwidth-control" hidden>
+              Analog bandwidth
+              <div class="input-unit"><input id="bandwidth-input" type="number" min="0.2" max="56" step="0.01" required aria-label="RX and TX analog bandwidth in MHz" /><span>MHz</span></div>
+            </label>
             <div id="radio-gains" class="radio-gains" hidden>
               <label
                 >RX gain

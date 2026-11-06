@@ -133,12 +133,12 @@ def main():
         "etc/init.d/S50maia-kmod",
         "etc/init.d/S60maia-httpd",
         "etc/init.d/S60dichasus",
+        "usr/bin/radar-motion",
     ]:
         records.pop(name, None)
         records.pop("./" + name, None)
     startup = (ROOT / "host/S61radar").read_bytes()
     additions = {
-        "usr/bin/radar-motion": (ROOT / "build/radar-motion").read_bytes(),
         "usr/bin/rtsctl": (ROOT / "build/rtsctl").read_bytes(),
         "usr/bin/radar-radio-setup": (ROOT / "scripts/radio_setup.sh").read_bytes(),
         "usr/bin/radar-radio-fast": (ROOT / "scripts/radio_fast_setup.sh").read_bytes(),

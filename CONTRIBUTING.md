@@ -1,10 +1,10 @@
 # Contributing
 
-The guides in `docs/` describe the current design. Earlier experiments remain
-in Git history.
+The guides in `docs/` describe the current design. Optional ESPARGOS measurement
+tools and their own tests live in `espargos-experiments/`.
 
 For software changes, run `make test-native test-ui-model test-provenance test-release`,
-`make test-local test-analysis` and the relevant browser test. You can use `make test` to run the HDL tests in Docker instead.
+`make test-local` and the relevant browser test. You can use `make test` to run the HDL tests in Docker instead.
 [The testing guide](docs/testing.md) explains the dependencies and hardware tests.
 Save your scene and radio settings before running tests against a Pluto; those
 tests change both. CI runs without hardware.

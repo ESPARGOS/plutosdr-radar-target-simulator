@@ -19,6 +19,28 @@ FILE *__wrap_fopen(const char *path, const char *mode) {
 int radar_linux_open(radar_device *device, radar_linux *backend) {
     (void)backend;
     fake_init(&fake, device);
+    if (getenv("RADAR_TEST_EXTENDED") || getenv("RADAR_TEST_WIDEBAND")) {
+        strcpy(fake.values[11], "[70000000 1 6000000000]");
+        strcpy(fake.values[12], "[46875001 1 6000000000]");
+    }
+    if (getenv("RADAR_TEST_FRACTIONAL")) {
+        fake.registers[RADAR_REG_VERSION] = 0x20000;
+        fake.registers[RADAR_REG_MAX_DELAY] = 12276;
+        fake.registers[RADAR_REG_FRACTION_BITS] = 10;
+        fake.registers[RADAR_REG_UPPER] = 12276;
+    }
+    if (getenv("RADAR_TEST_WIDEBAND")) {
+        fake.registers[RADAR_REG_VERSION] = 0x20001;
+        fake.registers[RADAR_REG_MAX_DELAY] = 12276;
+        fake.registers[RADAR_REG_FRACTION_BITS] = 10;
+        strcpy(fake.values[13], "[200000 1 56000000]");
+        strcpy(fake.values[14], "[200000 1 40000000]");
+    }
+    if (getenv("RADAR_TEST_EIGHT_TAPS"))
+        fake.registers[RADAR_REG_VERSION] = 0x20002;
+    const char *mask = getenv("RADAR_TEST_MASK");
+    if (mask)
+        fake.registers[RADAR_REG_ENABLE] = (unsigned)strtoul(mask, NULL, 10);
     const char *rate = getenv("RADAR_TEST_RATE");
     if (rate)
         snprintf(fake.values[0], sizeof(fake.values[0]), "%s", rate);

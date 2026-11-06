@@ -28,6 +28,7 @@ class ProvenanceTests(unittest.TestCase):
         for name in [
             "prepare_hdl.py",
             "generate_rom.py",
+            "generate_fractional_rom.py",
             "bootstrap_hdl.sh",
             "container.sh",
             "build_fpga.py",

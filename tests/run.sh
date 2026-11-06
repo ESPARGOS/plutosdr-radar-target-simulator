@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+python3 tests/test_fractional_response.py
+python3 tests/test_fractional_delay.py
+python3 tests/test_fpga_motion.py
 python3 tests/test_datapath.py
-iverilog -g2012 -s tb_axi -o build/tests/axi rtl/radar_axi.sv rtl/target_bank.sv rtl/nco_rom.v tests/tb_axi.sv
+iverilog -g2012 -s tb_axi -o build/tests/axi rtl/radar_axi.sv rtl/target_bank.sv rtl/target_motion.sv rtl/fractional_delay.sv rtl/fractional_rom.sv rtl/nco_rom.v tests/tb_axi.sv
 vvp build/tests/axi
 python3 tests/test_control.py
 python3 tests/test_firmware_import.py

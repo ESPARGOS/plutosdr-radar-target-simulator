@@ -3,6 +3,7 @@
 #define _DEFAULT_SOURCE
 #include "radar_control.h"
 #include "radar_linux.h"
+#include "radio_timing.h"
 #include <fcntl.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -204,10 +205,83 @@ static int tune_rx_inputs(volatile uint32_t *rx, uint32_t *candidates) {
     return (int)selected;
 }
 
+/* Search transceiver data delay and FPGA input delay together while keeping
+ * DATA_CLK fixed. A cold boot's input tap can reject a usable data-delay setting
+ * before the fine-delay scan has had a chance to center its eye. */
+static int tune_fixed_rx_clock(volatile uint32_t *rx, uint32_t *candidates) {
+    unsigned widths[16] = {0};
+    unsigned centers[16] = {0};
+    if (attr(phy, "ensm_mode", "alert") || regwrite(6, 0) ||
+        attr(phy, "ensm_mode", "fdd"))
+        return -1;
+    usleep(100000);
+    for (unsigned data = 0; data < 16 && !interrupted; ++data) {
+        if (regwrite(6, data))
+            return -1;
+        uint32_t good = 0;
+        for (unsigned tap = 0; tap < 32 && !interrupted; ++tap) {
+            for (unsigned lane = 0; lane < 13; ++lane)
+                rx[(0x800 + lane * 4) / 4] = tap;
+            usleep(2000);
+            rx[0x404 / 4] = 7;
+            rx[0x444 / 4] = 7;
+            usleep(20000);
+            if (!((rx[0x404 / 4] | rx[0x444 / 4]) & 6) && (rx[0x5c / 4] & 1))
+                good |= 1u << tap;
+        }
+        radio_timing_window window;
+        int center = radio_timing_pick(good, -1, &window);
+        widths[data] = window.width;
+        centers[data] = center < 0 ? 0 : (unsigned)center;
+        printf("RX data %x: common input eye %u taps from %u\n", data, window.width, window.start);
+        fflush(stdout);
+    }
+    for (unsigned attempt = 0; attempt < 16 && !interrupted; ++attempt) {
+        int best = -1;
+        for (unsigned data = 0; data < 16; ++data)
+            if (widths[data] >= 2 &&
+                (best < 0 || widths[data] > widths[best] ||
+                 (widths[data] == widths[best] &&
+                  abs(2 * (int)centers[data] - 31) < abs(2 * (int)centers[best] - 31))))
+                best = (int)data;
+        if (best < 0)
+            break;
+        if (regwrite(6, (unsigned)best))
+            return -1;
+        for (unsigned lane = 0; lane < 13; ++lane)
+            rx[(0x800 + lane * 4) / 4] = centers[best];
+        int selected = tune_rx_inputs(rx, candidates);
+        if (selected >= 0) {
+            printf("RX fixed-clock data delay 0x%02x, input tap %d\n", best, selected);
+            return selected;
+        }
+        widths[best] = 0;
+    }
+    return -1;
+}
+
+static int exercise_targets(radar_device *radar, radar_scene *scene, unsigned tick) {
+    for (unsigned target = 0; target < RADAR_TARGETS; ++target) {
+        scene->targets[target].delay = (tick * (target + 1) * 17) % radar_max_delay(radar);
+        scene->targets[target].fraction =
+            radar_fpga_motion(radar) ? (tick * (target + 1) * 127) & 65535 : 0;
+        scene->targets[target].gain = 4096 + ((tick + target * 37) & 1023);
+        if (!(tick % 17))
+            scene->targets[target].phase = 0u - scene->targets[target].phase;
+    }
+    return radar_apply_motion(radar, scene, radar_fpga_motion(radar) ? 15 : 0,
+                              15, 15, radar_max_delay(radar));
+}
+
 /* RX BIST and TX loopback need not have the same input eye. Center their
  * measured intersection rather than accepting the first passing RX tap. */
-static int center_joint_inputs(volatile uint32_t *rx, uint32_t candidates) {
-    unsigned best_start = 0, best_width = 0, start = 0, width = 0;
+static int center_joint_inputs(volatile uint32_t *rx, uint32_t candidates, int preferred,
+                               radar_device *radar) {
+    radar_scene exercise;
+    if (radar_snapshot(radar))
+        return -1;
+    radar_get_scene(radar, &exercise);
+    uint32_t good_taps = 0;
     for (unsigned tap = 0; tap < 32 && !interrupted; ++tap) {
         bool good = false;
         if (candidates & (1u << tap)) {
@@ -216,31 +290,30 @@ static int center_joint_inputs(volatile uint32_t *rx, uint32_t candidates) {
             usleep(100000);
             rx[0x404 / 4] = 7;
             rx[0x444 / 4] = 7;
-            usleep(1000000);
+            // Qualify the eye under the same scene updates as the final test.
+            // A quiet datapath can make a marginal tap look usable.
+            for (unsigned tick = 0; tick < 100 && !interrupted; ++tick) {
+                usleep(10000);
+                if (exercise_targets(radar, &exercise, tick))
+                    return -1;
+            }
             good = !((rx[0x404 / 4] | rx[0x444 / 4]) & 6) && (rx[0x5c / 4] & 1);
             printf("Joint input tap %u: %s\n", tap, good ? "passed" : "rejected");
         }
-        if (good) {
-            if (!width)
-                start = tap;
-            ++width;
-            if (width > best_width) {
-                best_start = start;
-                best_width = width;
-            }
-        } else
-            width = 0;
+        if (good)
+            good_taps |= 1u << tap;
     }
-    if (interrupted || !best_width)
+    radio_timing_window window;
+    int selected = radio_timing_pick(good_taps, preferred, &window);
+    if (interrupted || selected < 0)
         return -1;
-    unsigned selected = best_start + (best_width - 1) / 2;
     for (unsigned lane = 0; lane < 13; ++lane)
         rx[(0x800 + lane * 4) / 4] = selected;
     usleep(100000);
-    printf("Joint RX/TX input eye: %u taps from %u, selected %u\n", best_width, best_start,
+    printf("Joint RX/TX input eye: %u taps from %u, selected %d\n", window.width, window.start,
            selected);
     fflush(stdout);
-    return 0;
+    return selected;
 }
 
 int main(int argc, char **argv) {
@@ -267,12 +340,12 @@ int main(int argc, char **argv) {
     }
     if (!debug[0] || attr(phy, "out_voltage0_hardwaregain", "-60"))
         return 2;
+    char rate[64] = "0";
+    readattr(phy, "in_voltage_sampling_frequency", rate, sizeof rate);
+    bool fast = strtoul(rate, NULL, 10) > 100000000;
     // Bound startup retries. Longer, explicitly requested diagnostics are not timed out.
-    if (tune && seconds == 1) {
-        char rate[64] = "0";
-        readattr(phy, "in_voltage_sampling_frequency", rate, sizeof rate);
-        alarm(strtoul(rate, NULL, 10) > 100000000 ? 60 : 90);
-    }
+    if (tune && seconds == 1)
+        alarm(fast ? 60 : 90);
     int initial_rx_delay = regread(6), initial_tx_delay = regread(7);
     if (initial_rx_delay < 0 || initial_tx_delay < 0)
         return 2;
@@ -304,18 +377,37 @@ int main(int argc, char **argv) {
     radar_device radar;
     radar_linux backend;
     radar_scene original_scene;
+    unsigned original_moving = 0, original_upper = 0;
     if (tune) {
         if (radar_linux_open(&radar, &backend)) {
             fprintf(stderr, "%s\n", radar.error);
             return 2;
         }
+        if (radar_snapshot(&radar)) {
+            fprintf(stderr, "%s\n", radar.error);
+            radar_linux_close(&backend);
+            return 2;
+        }
         radar_get_scene(&radar, &original_scene);
+        original_upper = radar_max_delay(&radar);
+        if (radar_fpga_motion(&radar)) {
+            original_moving = radar.io->read_register(radar.context, RADAR_REG_MOTION) & 15;
+            original_upper = radar.io->read_register(radar.context, RADAR_REG_UPPER);
+            if (!original_upper)
+                original_upper = radar_max_delay(&radar);
+        }
         radar_scene stress = {.mask = 15,
-                              .targets = {{0, 0x12345678, 4096},
-                                          {1, 0x23456789, 4096},
-                                          {17, 0x89abcdef, 4096},
-                                          {2047, 0x98765432, 4096}}};
-        if (radar_apply(&radar, &stress)) {
+                              .targets = {{0, 0x12345678, 4096, 0},
+                                          {1, 0x23456789, 4096, 0},
+                                          {17, 0x89abcdef, 4096, 0},
+                                          {2047, 0x98765432, 4096, 0}}};
+        if (radar_fpga_motion(&radar))
+            for (unsigned i = 0; i < RADAR_TARGETS; ++i)
+                stress.targets[i].fraction = i * 16384;
+        // Exercise the interpolation tables and reflection arithmetic as well as
+        // the RF pins. Large Doppler words make trajectories cross often.
+        if (radar_apply_motion(&radar, &stress, radar_fpga_motion(&radar) ? 15 : 0, 15, 15,
+                               radar_max_delay(&radar))) {
             fprintf(stderr, "%s\n", radar.error);
             radar_linux_close(&backend);
             return 2;
@@ -354,27 +446,36 @@ int main(int argc, char **argv) {
             if (tune)
                 startup_stage(mode ? "tx_timing" : stage == 2 ? "rx_verify" : "rx_timing");
             if (tune && stage == 0 && !combination) {
-                if (tune_port(rx, 6, seconds, 256)) {
-                    failed = 1;
-                    break;
+                int selected = fast ? tune_fixed_rx_clock(rx, &all_inputs) : -1;
+                if (selected < 0 && !interrupted) {
+                    if (tune_port(rx, 6, seconds, 256)) {
+                        failed = 1;
+                        break;
+                    }
+                    selected = tune_rx_inputs(rx, &all_inputs);
                 }
-                int selected = tune_rx_inputs(rx, &all_inputs);
                 if (selected < 0) {
                     failed = 1;
                     break;
                 }
                 preferred_input = selected;
-                remaining_inputs = all_inputs & ~(1u << selected);
+                remaining_inputs = all_inputs;
             }
+            int retry_input = rx[0x800 / 4] & 31;
             if (tune && mode && tune_port(rx, 7, seconds, exhaustive ? 256 : 4)) {
+                remaining_inputs &= ~(1u << retry_input);
                 failed = 1;
                 break;
             }
             if (tune && mode)
                 startup_stage("joint_timing");
-            if (tune && mode && center_joint_inputs(rx, all_inputs)) {
-                failed = 1;
-                break;
+            if (tune && mode) {
+                int selected = center_joint_inputs(rx, all_inputs, combination ? retry_input : -1, &radar);
+                remaining_inputs &= ~(1u << (selected < 0 ? retry_input : selected));
+                if (selected < 0) {
+                    failed = 1;
+                    break;
+                }
             }
             if (mode) {
                 int selected = regread(7);
@@ -416,6 +517,10 @@ int main(int argc, char **argv) {
             unsigned ticks_per_second = live_updates ? 100 : 10;
             radar_scene exercise;
             if (live_updates) {
+                if (radar_snapshot(&radar)) {
+                    failed = 1;
+                    break;
+                }
                 radar_get_scene(&radar, &exercise);
                 puts("TX check exercises live four-target delay, Doppler and gain updates");
                 fflush(stdout);
@@ -423,13 +528,7 @@ int main(int argc, char **argv) {
             for (unsigned i = 0; i < verification * ticks_per_second && !interrupted; i++) {
                 usleep(1000000 / ticks_per_second);
                 if (live_updates) {
-                    for (unsigned target = 0; target < RADAR_TARGETS; ++target) {
-                        exercise.targets[target].delay = (i * (target + 1) * 17) & RADAR_MAX_DELAY;
-                        exercise.targets[target].gain = 4096 + ((i + target * 37) & 1023);
-                        if (!(i % 17))
-                            exercise.targets[target].phase = 0u - exercise.targets[target].phase;
-                    }
-                    if (radar_apply(&radar, &exercise)) {
+                    if (exercise_targets(&radar, &exercise, i)) {
                         failed = 1;
                         break;
                     }
@@ -499,7 +598,8 @@ int main(int argc, char **argv) {
     if (tune) {
         if (failed)
             original_scene.mask = 0;
-        failed |= radar_apply(&radar, &original_scene) != 0;
+        failed |= radar_apply_motion(&radar, &original_scene, original_moving, 15, 15,
+                                     original_upper) != 0;
         radar_linux_close(&backend);
     }
     munmap((void *)rx, 4096);

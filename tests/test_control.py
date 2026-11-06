@@ -2,11 +2,23 @@ import argparse, sys, unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "host"))
-from scene import validate
+from scene import MAX_DELAY, validate
 from control import Controller
 
 
 class ControlTests(unittest.TestCase):
+    def test_maximum_delay_roundoff(self):
+        for rate in (61.44e6, 160e6):
+            for maximum in (8184, 12276):
+                scene = {"targets": [dict(delay_us=maximum / rate * 1e6,
+                                          doppler_hz=0, gain_db=-6)]}
+                target = validate(scene, rate, 10, maximum)[0]
+                self.assertEqual(target["delay_samples"], maximum)
+                self.assertEqual(target["fraction_q16"], 0)
+                scene["targets"][0]["delay_us"] += 1e6 / (rate * 1024)
+                with self.assertRaises(ValueError):
+                    validate(scene, rate, 10, maximum)
+
     def test_quantization(self):
         t = validate(
             {
@@ -23,7 +35,7 @@ class ControlTests(unittest.TestCase):
         base = dict(delay_us=1, doppler_hz=1, gain_db=-6, enabled=True)
         for key, value in [
             ("delay_us", -1),
-            ("delay_us", 103),
+            ("delay_us", (MAX_DELAY + 1) / 20),
             ("doppler_hz", float("nan")),
             ("doppler_hz", 10e6),
             ("gain_db", 1),

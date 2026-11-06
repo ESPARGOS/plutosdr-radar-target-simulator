@@ -64,7 +64,7 @@ export class SceneController {
       this.sceneTime = performance.now();
       this.selected = Math.min(this.selected, this.targets.length - 1);
     }
-    if (snapshot.muted)
+    if (snapshot.muted && replaceScene)
       this.targets.forEach((target) => {
         target.enabled = false;
       });
@@ -198,6 +198,12 @@ export class SceneController {
   }
   carrier(hz) {
     return this.exclusive("carrier", () => this.api.carrier(hz));
+  }
+  radioMode(mode) {
+    return this.exclusive("radio-mode", () => this.api.radioMode(mode));
+  }
+  bandwidth(hz) {
+    return this.exclusive("bandwidth", () => this.api.bandwidth(hz));
   }
   gain(channel, db) {
     return this.enqueue(async () => {

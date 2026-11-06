@@ -2,90 +2,84 @@
 
 ![The four FPGA target paths](assets/fpga-datapath.svg)
 
-The FPGA makes four copies of the received IQ signal. Each copy gets its own
-delay, Doppler shift and gain:
-
-`y[k,n] = gain[k] × x[n − delay[k]] × exp(j × phase[k,n])`
-
-The four echoes are added together, clipped to the signed 16-bit output range,
-and sent to the transmitter. Each oscillator uses a 32-bit phase accumulator
-and a 10-bit lookup table. Gain coefficients use Q1.15 fixed-point arithmetic.
-The target bank adds two RF clock cycles after sample capture. The ARM processor
-and browser handle settings; they don't process the IQ samples.
+The FPGA creates four echoes from the incoming complex samples. Each path has
+a 12288-sample history, a fractional-delay filter and a complex
+oscillator. The oscillator coefficients include the target gain. The four
+echoes are added, clipped to the signed 16-bit output range and sent to the
+transmitter. The ARM processor and browser handle settings, not IQ samples.
 
 ## Delay, Doppler and range
 
-You can add between 0 and 2047 whole samples of delay. Fractional-sample delay
-isn't implemented. A delay change can cause a phase jump, while changing Doppler
-preserves the oscillator's phase. Settings for all four targets take effect
-together, and samples already in the short pipeline are discarded at that point.
-While you drag a target, the browser sends updates about 12 times per second.
-With Realistic movement off, range and velocity remain independent controls.
+Added delay runs from 0 to 12276 samples in steps of 1/1024 sample. Four interleaved memory banks supply the filter taps on every sample clock.
+Each 72-bit memory word holds three complex samples at the ADC’s native
+12-bit precision. The filter uses six taps over ±28 MHz at 160 MSa/s, or eight taps over ±15.36 MHz
+at 61.44 MSa/s. Separate least-squares coefficient tables serve the two sample
+rates. Their fixed delays are two and three samples, respectively, plus the
+selected fraction.
+The coefficients use Q2.16 arithmetic and sum to exactly one after rounding.
+Each pair of targets shares a dual-port coefficient ROM.
+The fixed filter offset is included in the
+hardware latency. The processing pipeline adds eighteen clock cycles after
+sample capture.
 
-The plot shows monostatic range, calculated as
-`c × (added delay + hardware latency) / 2`. Positive velocity means the target is
-moving away, with `v = −c × Doppler / (2 × carrier)`. This matches the sign
-convention in the ESPARGOS MIMO demo.
+Over these bands, the quantized filters' worst complex response errors are below
+−61 dB at 160 MSa/s and −57 dB at 61.44 MSa/s. Within a 20 MHz band, the
+standard-mode bound is below −67 dB. These calculated bounds exclude
+rounding the requested delay to the 1/1024-sample grid and quantizing the output
+samples. They are filter characteristics, not measured RF error specifications.
 
-The UI includes a measured reference hardware delay of 0.325 µs at 160 MSa/s
-or 0.78125 µs at 61.44 MSa/s when the FPGA version and radio settings match
-the corresponding measurement. For other
-configurations it shows range offsets, since the hardware delay is unknown.
-All echoes come from the same antenna, so they have the same apparent direction.
+Each oscillator has a 32-bit phase accumulator and a 1024-entry complex lookup
+table. Two shared multipliers prepare new gain-scaled coefficients in an
+inactive table. The old scene continues until all four new tables are ready,
+then the paths switch together. A manual scene edit clears the short output
+pipeline. Doppler changes preserve oscillator phase.
 
-Startup uses `radio-pn --tune` to select actual RX/TX clock/data delay pairs,
-without relying on the driver's abbreviated timing scan. The test activates all
-four target paths while checking the interface, then restores the saved scene.
-RX prefers a valid data-only delay before trying clock-delay alternatives. It
-then centers the common FPGA input-delay window, keeping data and frame timing
-coherent. TX selects an interior passing point, then measures the intersection
-of the RX and TX input-delay windows. The center of that joint window must pass
-a five-second TX check with live four-target updates, followed by another RX check.
-Each candidate undergoes a one-second PN check,
-and a failed candidate is excluded before trying another. If an FPGA input tap
-passes RX but fails TX, startup tries the other measured RX-eye taps and checks
-both directions again. It tries a few promising TX settings per input tap first,
-then performs a full TX search if none passes. The checker uses the
-shared control lock so a simultaneous scene request cannot change its test load.
+The plot shows monostatic range as `c × (added delay + hardware latency) / 2`.
+Positive radial velocity means moving away, with
+`v = −c × Doppler / (2 × carrier)`. The interface includes a reference hardware
+delay for the supported radio profiles and shades the unreachable region.
+That reference is not an individual calibration of your Pluto.
 
-If fast-mode validation fails, the init script requests the normal 61.44 MSa/s
-profile. It restores the driver-managed filters and clocks, validates the
-interface again and records `/tmp/radar-fallback`. The movement service accepts
-both operating rates and uses the reported rate in its trajectory calculations.
-The API exposes `fallback: true` and the 0.78125 µs reference latency in standard
-mode. The browser uses that latency for total range and the shaded exclusion
-region. A failure in both profiles leaves the controls unavailable.
+The fine delay setting is useful for positioning and movement. It does not
+change the radar's ability to distinguish nearby targets. A waveform with
+20 MHz bandwidth has a nominal range resolution of about 7.5 m, before windowing.
+All echoes leave the same antenna and have the same apparent direction.
 
 ## Moving targets
 
-`radar-motion` runs on Pluto's ARM processor. Every 10 ms it advances enabled
-moving targets using monotonic elapsed time, then commits changed delay/Doppler
-words through the existing FPGA interface. It does not process samples or add RF
-latency. Delay changes still use whole samples (about 0.94 m at 160 MSa/s), and
-can introduce the same discontinuities as a manual delay change. This is not a
-fractional-delay resampler or a sample-exact model of a moving reflector.
+The FPGA updates a moving target on every valid input sample. Its position
+accumulator has 48 fractional bits, and its delay step is
+`−Doppler / carrier` samples per input sample. The oscillator advances on the
+same clock. This produces both the carrier Doppler and the additional phase
+change across the baseband signal caused by a changing propagation delay.
+Movement continues when the browser closes.
 
-Positive radial velocity increases range. A target reverses velocity at either
-end of the available interval: zero added delay and the current range window's
-upper bound, rounded down to a whole delay sample. Fractional position is retained
-between ticks so slow movement does not stall. Turning a target off or muting
-pauses its motion; disabling movement freezes its current range and Doppler.
-Shrinking the window clamps targets beyond its upper edge and sends them inward.
-The window stays in effect when the browser closes. Scenes and motion state are
-not restored across a reboot.
+A target reflects at zero added delay or the selected upper range boundary.
+The FPGA mirrors any overshoot and reverses the delay step and Doppler without
+resetting phase. These immediate reversals make a scene repeat, but do not model
+finite acceleration. Target gain stays at its chosen value rather than following
+a free-space path-loss law.
 
-The service and CGI share the existing hardware lock. A small RAM-backed mapping
-holds motion flags, bounds, fractional positions, readback and a heartbeat. A
-scene request includes separate masks for explicitly edited positions and
-Dopplers, so editing gain or another target does not rewind a moving trajectory.
-The worker notices external register changes and rebases the corresponding
-position. Raw `rtsctl apply` and legacy `/apply` requests disable motion.
-A worker error mutes the targets; movement requests are rejected if its heartbeat
-is stale. Normal scene controls and mute do not depend on the worker being alive.
+Muting pauses position. Disabling movement freezes the current range while
+leaving the Doppler setting active. A narrower movement window clamps moving
+targets to its upper boundary. Static targets may remain outside the visible
+window. Position and velocity edit masks let a gain change leave an ongoing
+trajectory alone. Carrier changes mute the scene and recalculate its delay
+slopes before it can be unmuted.
 
-The browser polls moving scenes more often and interpolates marker positions
-between readbacks. This animation is display-only; the trajectory continues on
-Pluto independently of browser timing. Ordinary target commits preserve NCO phase.
+The API requests a coherent FPGA snapshot for each state read. The browser
+interpolates marker positions between readbacks, but this animation does not
+control the RF signal. Scenes are not restored across reboot.
+
+## Radio startup
+
+Startup calibrates RX and TX timing and checks pseudorandom sequences with all
+four paths active. The overclocked RX search varies transceiver data delay and
+FPGA input delay together before trying clock shifts. It selects a common passing
+input-delay window for both directions under live scene updates. If 160 MSa/s fails, startup restores
+the driver-managed 61.44 MSa/s profile and checks it again. The API reports the
+active rate, fallback status and matching reference latency. A failure in both
+profiles leaves the controls unavailable and targets muted.
 
 ## HTTP API
 
@@ -96,9 +90,11 @@ settings, send a POST request with `Content-Type: text/plain`:
 
 | Endpoint | Body | Effect |
 | --- | --- | --- |
-| `/apply` | Enable mask, then four `delay_samples phase_increment gain_q15` rows | Update all targets together |
+| `/apply` | `fractional`, enable mask, then four `integer_delay phase_increment gain_q15 fraction_q16` rows | Update all targets together |
 | `/mute` | Empty | Disable all targets |
 | `/radio` | Carrier frequency in Hz | Mute targets, tune RX and TX, and check the result |
+| `/bandwidth` | Common RX/TX bandwidth in integer Hz. | Mute targets and set analog filters |
+| `/mode` | `standard` or `overclocked` | Save the mode and restart radio calibration |
 | `/gain` | `rx 35` or `tx -25` | Set and read back the hardware gain |
 
 The phase increment is `round(Doppler / fs × 2^32)`, encoded as an unsigned
@@ -107,11 +103,12 @@ mask runs from 0 to 15.
 
 Movement-aware clients prepend one line to `/apply`:
 `motion motion_mask position_edit_mask phase_edit_mask upper_delay_samples`.
-Masks are 0–15 and the upper bound is 1–2047. The remaining body is the same scene
+Masks are 0–15 and the upper bound is 1–12276. The remaining body is the same scene
 format. An unset edit bit preserves that field for an already-moving target;
 new targets must set both edit bits. `/state` exposes `motion_available`,
 `motion_upper_samples`, and each target's `realistic_movement` flag.
-Legacy requests remain supported and turn movement off.
+Requests without the movement header turn movement off. Integer-only payloads
+without the `fractional` line remain supported.
 
 The CGI checks request lengths, values, browser origin and gain steps. It shares
 `/tmp/radar-control.lock` with `rtsctl` so simultaneous requests cannot interleave
@@ -122,8 +119,38 @@ gain range, which can depend on the carrier. The API has no authentication.
 Mute only needs the FPGA register map. It still works when the sample clock,
 carrier or gain attributes cannot be read. In that case the response confirms
 `muted: true`, returns `null` for unavailable values and includes a warning.
-Carrier changes leave targets muted on both success and failure. Failed gain or
-carrier writes attempt to restore the previous settings and verify the result.
+Carrier and bandwidth changes leave targets muted on both success and failure.
+Failed writes attempt to restore the previous settings and verify the result.
+`frequency_min_hz` and `frequency_max_hz` report the intersection of the driver's
+RX and TX tuning ranges, bounded to 70 MHz–6 GHz. If the driver omits these limits,
+the API uses the specified AD9363 range of 325–3800 MHz.
+
+`bandwidth_max_hz` gives the supported upper limit: 56 MHz in overclocked mode,
+30.72 MHz in standard mode, or 20 MHz without the tuning-range extension.
+`wideband_available` indicates support beyond 20 MHz. The minimum request is 200 kHz.
+One bandwidth value configures both RX and TX. Failed changes restore both previous
+settings and leave targets muted.
+
+Mode changes return HTTP 202 after muting and saving the selection. The radio
+restarts in the background. During calibration, state requests return HTTP 503
+with progress information, and setting changes are rejected. The new mode starts
+with an empty scene and 20 MHz bandwidth, preserving carrier frequency and gains.
+`requested_radio_mode` is the saved choice, while `radio_mode` describes the
+active profile, which can differ after an automatic fallback.
+
+The ADI driver accepts a 56 MHz TX request even when its available-range attribute
+lists 40 MHz. Requests from 40 to 56 MHz use the same main TX filter calibration
+and secondary-filter settings. This is an internal calibration limit, not a
+40 MHz RF bandwidth limit. The main TX filter corner can reach 32 MHz on either
+side of the carrier and is quantized by the calibration divider. See the
+[ADI reference manual, pages 10 and 32](https://www.analog.com/media/en/technical-documentation/user-guides/ad9361.pdf)
+and [driver calibration code](https://github.com/analogdevicesinc/linux/blob/2019_R2/drivers/iio/adc/ad9361.c).
+
+Read `hardware_latency_us` after changing bandwidth. Reference delays are available
+for 20 MHz in both modes, 30.72 MHz in standard mode and 56 MHz in overclocked mode. Other combinations
+return null. The UI then labels the plot as range offset and the sidebar as added
+delay, instead of claiming an uncalibrated total range. Filter settings do not
+guarantee a flat end-to-end passband.
 
 The Python preview uses the same scene payload under `/api/`; only the endpoint
 prefix differs. It does not expose carrier or radio-gain controls. The
@@ -147,21 +174,18 @@ The browser uses native JavaScript modules, without a bundler:
 - `plot.js` handles plotting, dragging and zoom. `app.js` connects the controls
   to the scene controller; `dom.js` contains the small DOM helpers.
 
-`host/server.py` serves the hardware-free preview. `host/control.py` provides
-its in-memory state and the SSH adapter used by measurement scripts.
+`host/server.py` serves the hardware-free preview, with an in-memory scene
+controller in `host/control.py`.
 `host/scene.py` shares the Python conversion rules. Golden payload fixtures
 check that Python and JavaScript agree, including negative and half-step rounding.
-
-Startup publishes readiness only after timing calibration and PN checks pass
-for either 160 MSa/s or the 61.44 MSa/s fallback. Until then, the CGI returns
-HTTP 503. If both profiles fail, targets stay muted and the API reports the failure.
 
 ## Scene files
 
 An exported scene is a JSON object with `version: 1` and a `targets` array.
 Each of its four possible entries has `enabled`, `delay_us`, `doppler_hz` and
 `gain_db` fields. `delay_us` stores **added delay**, even though the plot shows
-total range. The files in `config/` use the same format; the importer also accepts
+total range. The optional `realistic_movement` field enables motion for that target.
+The files in `config/` use the same format; the importer also accepts
 files without a `version` field.
 
 Scenes store target settings only. Carrier frequency, radio gains and plot zoom

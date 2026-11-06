@@ -1,9 +1,0 @@
-{
-  "pluto_host": "192.168.2.1",
-  "espargos_host": "192.168.1.100",
-  "frequency_hz": 2385000000,
-  "sample_rate_hz": 160000000,
-  "bandwidth_hz": 20000000,
-  "rx_gain_db": 25,
-  "tx_attenuation_db": 35
-}

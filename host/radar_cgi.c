@@ -1,8 +1,10 @@
+#define _POSIX_C_SOURCE 200809L
 /* HTTP controls for the Pluto web UI. */
 #include "radar_control.h"
 #include "radar_linux.h"
-#include "radar_motion.h"
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,11 +24,30 @@
 #define RADAR_STARTUP_FILE "/tmp/radar-startup-state"
 #endif
 
-typedef enum { STATE, APPLY, MUTE, CARRIER, GAIN } operation;
+#ifndef RADAR_MODE_FILE
+#define RADAR_MODE_FILE "/mnt/jffs2/radar-mode"
+#endif
+#ifndef RADAR_SERVICE
+#define RADAR_SERVICE "/etc/init.d/S61radar"
+#endif
+
+typedef enum { STATE, APPLY, MUTE, CARRIER, GAIN, BANDWIDTH, RADIO_MODE } operation;
+
+static const char *requested_mode(void) {
+    char value[32] = "";
+    FILE *file = fopen(RADAR_MODE_FILE, "r");
+    if (file) {
+        (void)fgets(value, sizeof(value), file);
+        fclose(file);
+    }
+    return !strcmp(value, "standard\n") ? "standard" : "overclocked";
+}
 typedef struct {
     operation operation;
     radar_scene scene;
     uint64_t carrier;
+    unsigned bandwidth;
+    bool standard;
     bool tx;
     double gain;
     bool motion_request;
@@ -64,14 +85,15 @@ static void startup_response(void) {
         const char *key, *label;
     } stages[] = {
         {"radio", "Configuring the radio"},
-        {"clocks", "Configuring the 160 MSa/s interface"},
+        {"clocks", "Configuring the overclocked interface"},
+        {"standard", "Configuring the standard interface"},
+        {"reconfigure", "Restarting the radio"},
         {"fallback", "Restoring normal radio clocks and filters"},
         {"rx_timing", "Calibrating RX interface timing"},
         {"tx_timing", "Calibrating TX interface timing"},
         {"joint_timing", "Checking shared RX/TX timing"},
         {"tx_verify", "Checking TX integrity (5-second startup test)"},
         {"rx_verify", "Checking RX integrity (1-second startup test)"},
-        {"movement", "Starting target movement service"},
         {"ready", "Finishing radar startup"},
     };
     bool known = false;
@@ -129,6 +151,10 @@ static int parse_request(request *result) {
         result->operation = CARRIER;
     else if (!strcmp(path, "/gain"))
         result->operation = GAIN;
+    else if (!strcmp(path, "/mode"))
+        result->operation = RADIO_MODE;
+    else if (!strcmp(path, "/bandwidth"))
+        result->operation = BANDWIDTH;
     else {
         error_response(404, "Unknown endpoint");
         return -1;
@@ -184,10 +210,27 @@ static int parse_request(request *result) {
         }
         errno = 0;
         result->carrier = strtoull(body, NULL, 10);
-        if (errno || result->carrier < 325000000ULL || result->carrier > 3800000000ULL) {
-            error_response(400, "Carrier must be between 325 and 3800 MHz");
+        if (errno || result->carrier < 70000000ULL || result->carrier > 6000000000ULL) {
+            error_response(400, "Carrier must be between 70 and 6000 MHz");
             return -1;
         }
+    } else if (result->operation == RADIO_MODE) {
+        if (strcmp(body, "standard") && strcmp(body, "overclocked")) {
+            error_response(400, "Mode must be standard or overclocked");
+            return -1;
+        }
+        result->standard = !strcmp(body, "standard");
+    } else if (result->operation == BANDWIDTH) {
+        if (length > 8 || strspn(body, "0123456789") != (size_t)length) {
+            error_response(400, "Bandwidth must be integer Hz");
+            return -1;
+        }
+        unsigned long hz = strtoul(body, NULL, 10);
+        if (hz < 200000 || hz > 56000000) {
+            error_response(400, "Bandwidth must be from 200000 to 56000000 Hz");
+            return -1;
+        }
+        result->bandwidth = (unsigned)hz;
     } else {
         char channel[3];
         int consumed = 0;
@@ -215,12 +258,14 @@ static void json_number(const char *name, double value) {
         fputs("null", stdout);
 }
 
-static void state_response(radar_device *device, bool muted, const radar_motion *motion) {
+static void state_response(radar_device *device) {
     radar_scene scene;
     radar_get_scene(device, &scene);
     unsigned long rate = radar_sample_rate(device);
     double fs = rate ? (double)rate : NAN;
     double frequency = read_number(device, "out_altvoltage0_RX_LO_frequency");
+    uint64_t carrier_minimum, carrier_maximum;
+    radar_carrier_limits(device, &carrier_minimum, &carrier_maximum);
     double rx_bandwidth = read_number(device, "in_voltage_rf_bandwidth");
     double tx_bandwidth = read_number(device, "out_voltage_rf_bandwidth");
     double rx_gain = read_number(device, "in_voltage0_hardwaregain");
@@ -232,28 +277,57 @@ static void state_response(radar_device *device, bool muted, const radar_motion 
                            isfinite(tx_bandwidth) && isfinite(rx_gain) && isfinite(tx_gain) &&
                            rx_limits_ok && tx_limits_ok;
     uint32_t version = device->io->read_register(device->context, RADAR_REG_VERSION);
+    bool hardware_motion = radar_fpga_motion(device);
+    unsigned motion_mask =
+        hardware_motion ? device->io->read_register(device->context, RADAR_REG_MOTION) & 15 : 0;
     bool clipped = device->io->read_register(device->context, RADAR_REG_CLIPPED) != 0;
     bool standard = rate == 61440000 && read_number(device, "in_out_voltage_filter_fir_en") == 0;
     bool fallback = standard && access(RADAR_FALLBACK_FILE, F_OK) == 0;
     double latency = NAN;
-    if (version == 0x00010010 && rx_bandwidth == 20000000 && tx_bandwidth == 20000000)
-        latency = rate == 160000000 ? .325 : standard ? .78125 : NAN;
+    if (rx_bandwidth == 20000000 && tx_bandwidth == 20000000) {
+        if (hardware_motion)
+            latency = rate == 160000000 ? .44375 : standard ? 1.05625 : NAN;
+        else if (version == 0x00010010 || version == 0x00010011)
+            latency = rate == 160000000 ? .325 : standard ? .78125 : NAN;
+    }
+    if (version == 0x00020001 && rate == 160000000 && rx_bandwidth == 56000000 &&
+        tx_bandwidth >= 40000000 && tx_bandwidth <= 56000000)
+        latency = .4078125;
+    if (version == 0x00020002) {
+        latency = NAN;
+        if (rx_bandwidth == 20000000 && tx_bandwidth == 20000000)
+            latency = rate == 160000000 ? .45 : standard ? 1.090625 : NAN;
+        else if (rate == 160000000 && rx_bandwidth == 56000000 && tx_bandwidth == 56000000)
+            latency = .4140625;
+        else if (standard && rx_bandwidth == 30720000 && tx_bandwidth == 30720000)
+            latency = 1.0734375;
+    }
     printf("Content-Type: application/json\r\nCache-Control: no-store\r\n\r\n"
            "{\"mode\":\"hardware\",\"connected\":true,\"error\":null,\"pluto\":\"on-device\","
            "\"max_targets\":%d,\"latency_calibrated\":false,\"muted\":%s,\"clipped\":%s,"
            "\"radio_available\":%s,\"warning\":%s",
-           RADAR_TARGETS, muted ? "true" : "false", clipped ? "true" : "false",
+           RADAR_TARGETS, scene.mask == 0 ? "true" : "false", clipped ? "true" : "false",
            radio_available ? "true" : "false",
            radio_available ? "null" : "\"Some radio settings could not be read\"");
     printf(",\"fallback\":%s", fallback ? "true" : "false");
-    printf(",\"motion_available\":%s", radar_motion_available(motion) ? "true" : "false");
-    json_number("motion_upper_samples", motion ? motion->upper : RADAR_MAX_DELAY);
+    printf(",\"motion_available\":%s", hardware_motion ? "true" : "false");
+    json_number("motion_upper_samples",
+                hardware_motion ? device->io->read_register(device->context, RADAR_REG_UPPER)
+                                : radar_max_delay(device));
+    json_number("fractional_delay_bits", hardware_motion ? 10 : 0);
+    printf(",\"fpga_motion\":%s", hardware_motion ? "true" : "false");
     json_number("sample_rate_hz", fs);
     json_number("frequency_hz", frequency);
-    json_number("max_delay_us", RADAR_MAX_DELAY * 1e6 / fs);
-    json_number("delay_step_us", 1e6 / fs);
+    json_number("max_delay_us", radar_max_delay(device) * 1e6 / fs);
+    json_number("delay_step_us", 1e6 / fs / (hardware_motion ? 1024 : 1));
     json_number("doppler_step_hz", fs / 4294967296.0);
+    printf(",\"requested_radio_mode\":\"%s\",\"radio_mode\":\"%s\"", requested_mode(),
+           rate > 100000000 ? "overclocked" : "standard");
     json_number("rx_bandwidth_hz", rx_bandwidth);
+    printf(",\"wideband_available\":%s", radar_wide_bandwidth_available(device) ? "true" : "false");
+    json_number("bandwidth_max_hz", radar_max_bandwidth(device));
+    json_number("frequency_min_hz", (double)carrier_minimum);
+    json_number("frequency_max_hz", (double)carrier_maximum);
     json_number("tx_bandwidth_hz", tx_bandwidth);
     json_number("rx_gain_db", rx_gain);
     json_number("tx_gain_db", tx_gain);
@@ -273,9 +347,8 @@ static void state_response(radar_device *device, bool muted, const radar_motion 
             continue;
         printf("%s{\"id\":%u,\"enabled\":%s", emitted++ ? "," : "", i + 1,
                enabled ? "true" : "false");
-        printf(",\"realistic_movement\":%s",
-               motion && (motion->mask & (1u << i)) ? "true" : "false");
-        json_number("delay_us", target->delay * 1e6 / fs);
+        printf(",\"realistic_movement\":%s", (motion_mask & (1u << i)) ? "true" : "false");
+        json_number("delay_us", (target->delay + target->fraction / 65536.0) * 1e6 / fs);
         json_number("doppler_hz", (int32_t)target->phase * fs / 4294967296.0);
         json_number("gain_db", target->gain ? fmax(-90, 20 * log10(target->gain / 32768.0)) : -90);
         fputc('}', stdout);
@@ -283,11 +356,67 @@ static void state_response(radar_device *device, bool muted, const radar_motion 
     puts("]}");
 }
 
+/* The CGI returns immediately; polling reports progress from the init script. */
+static void switch_mode(radar_device *device, bool standard) {
+    if (access(RADAR_SERVICE, R_OK)) {
+        error_response(503, "Radio reconfiguration is unavailable");
+        return;
+    }
+    if (radar_mute(device)) {
+        error_response(503, device->error);
+        return;
+    }
+    FILE *file = fopen(RADAR_MODE_FILE ".new", "w");
+    if (!file) {
+        error_response(503, "Cannot save the radio mode");
+        return;
+    }
+    bool saved = fprintf(file, "%s\n", standard ? "standard" : "overclocked") > 0;
+    saved = fflush(file) == 0 && saved;
+    saved = fsync(fileno(file)) == 0 && saved;
+    saved = fclose(file) == 0 && saved;
+    if (!saved || rename(RADAR_MODE_FILE ".new", RADAR_MODE_FILE)) {
+        unlink(RADAR_MODE_FILE ".new");
+        error_response(503, "Cannot save the radio mode");
+        return;
+    }
+    unlink(RADAR_READY_FILE);
+    unlink(RADAR_FAILED_FILE);
+    unlink(RADAR_FALLBACK_FILE);
+    unlink(RADAR_STARTUP_FILE);
+    pid_t child = fork();
+    if (child < 0) {
+        file = fopen(RADAR_FAILED_FILE, "w");
+        if (file) fclose(file);
+        error_response(503, "Cannot start radio reconfiguration");
+        return;
+    }
+    if (!child) {
+        setsid();
+        int null = open("/dev/null", O_RDWR);
+        if (null >= 0) {
+            dup2(null, STDIN_FILENO);
+            dup2(null, STDOUT_FILENO);
+            dup2(null, STDERR_FILENO);
+            if (null > STDERR_FILENO) close(null);
+        }
+        execl("/bin/sh", "sh", RADAR_SERVICE, "reconfigure", (char *)NULL);
+        file = fopen(RADAR_FAILED_FILE, "w");
+        if (file) fclose(file);
+        _exit(127);
+    }
+    printf("Status: 202\r\nContent-Type: application/json\r\nCache-Control: no-store\r\n\r\n"
+           "{\"connected\":false,\"muted\":true,\"targets\":[],"
+           "\"requested_radio_mode\":\"%s\",\"error\":\"Restarting the radio\"}\n",
+           standard ? "standard" : "overclocked");
+}
+
 int main(void) {
     request input = {0};
     if (parse_request(&input))
         return 0;
-    if (access(RADAR_READY_FILE, F_OK)) {
+    if (access(RADAR_READY_FILE, F_OK) &&
+        !(input.operation == RADIO_MODE && access(RADAR_FAILED_FILE, F_OK) == 0)) {
         startup_response();
         return 0;
     }
@@ -297,47 +426,24 @@ int main(void) {
         error_response(503, device.error);
         return 0;
     }
-    radar_motion *motion = radar_motion_open(false);
-    if (input.motion_request && !radar_motion_available(motion)) {
-        error_response(503, "Movement service unavailable");
-        radar_motion_close(motion);
+    /* A mode change may have begun while this CGI waited for the device lock. */
+    if (access(RADAR_READY_FILE, F_OK) &&
+        !(input.operation == RADIO_MODE && access(RADAR_FAILED_FILE, F_OK) == 0)) {
+        radar_linux_close(&backend);
+        startup_response();
+        return 0;
+    }
+    if (input.operation == RADIO_MODE) {
+        switch_mode(&device, input.standard);
         radar_linux_close(&backend);
         return 0;
     }
     int result;
     switch (input.operation) {
     case APPLY: {
-        radar_motion next = motion ? *motion : (radar_motion){0};
-        if (motion) {
-            radar_scene current;
-            radar_get_scene(&device, &current);
-            /* Use current readback when another controller has changed the scene. */
-            for (unsigned i = 0; i < RADAR_TARGETS; ++i)
-                if (current.targets[i].delay != next.last.targets[i].delay)
-                    next.position[i] = current.targets[i].delay;
-            next.last = current;
-            double now = radar_motion_now();
-            if (next.mask & current.mask) {
-                double carrier;
-                unsigned long rate = radar_sample_rate(&device);
-                if (!rate ||
-                    radar_read_number(&device, "out_altvoltage0_RX_LO_frequency", &carrier)) {
-                    device.error = "Motion clock or carrier unavailable";
-                    result = -1;
-                    break;
-                }
-                radar_motion_advance(&next, &current, now, rate, carrier);
-            }
-            radar_motion_configure(&next, &input.scene, input.motion_mask, input.position_edits,
-                                   input.phase_edits, input.upper, now);
-        }
-        result = radar_apply(&device, &input.scene);
-        if (motion && !result)
-            *motion = next;
-        if (motion && result) {
-            motion->mask = 0;
-            radar_mute(&device);
-        }
+        unsigned upper = input.motion_request ? input.upper : radar_max_delay(&device);
+        result = radar_apply_motion(&device, &input.scene, input.motion_mask, input.position_edits,
+                                    input.phase_edits, upper);
         break;
     }
     case MUTE:
@@ -349,15 +455,19 @@ int main(void) {
     case GAIN:
         result = radar_set_gain(&device, input.tx, input.gain);
         break;
+    case BANDWIDTH:
+        result = radar_set_bandwidth(&device, input.bandwidth);
+        break;
     default:
         result = radar_wait_idle(&device);
         break;
     }
+    if (!result)
+        result = radar_snapshot(&device);
     if (result)
         error_response(result == RADAR_INVALID ? 400 : 503, device.error);
     else
-        state_response(&device, input.operation == MUTE, motion);
-    radar_motion_close(motion);
+        state_response(&device);
     radar_linux_close(&backend);
     return 0;
 }

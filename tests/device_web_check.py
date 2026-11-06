@@ -25,14 +25,17 @@ def request(path, data=None, origin=None):
 
 
 assert request("apply", b"15\n-1 0 1")[0] == 400
-assert request("apply", b"15\n" + b"2048 0 1\n" * 4)[0] == 400
 assert request("mute", b"", origin="http://example.invalid")[0] == 403
-assert request("radio", b"100000000")[0] == 400
+assert request("radio", b"69000000")[0] == 400
 assert request("radio", b"2380000000garbage")[0] == 400
 initial_radio = request("state")[1]
 assert initial_radio["connected"]
+maximum_delay = round(
+    initial_radio["max_delay_us"] * initial_radio["sample_rate_hz"] / 1e6
+)
+assert request("apply", ("15\n" + f"{maximum_delay + 1} 0 1\n" * 4).encode())[0] == 400
 expected_rate = int(os.environ.get("RTS_EXPECTED_RATE", "160000000"))
-expected_latency = 0.78125 if expected_rate == 61440000 else 0.325
+expected_latency = 1.090625 if expected_rate == 61440000 else .45
 assert abs(initial_radio["sample_rate_hz"] - expected_rate) <= 100, initial_radio
 assert initial_radio.get("hardware_latency_us") == expected_latency, initial_radio
 for payload in (
@@ -98,6 +101,9 @@ try:
             break
         time.sleep(0.25)
     assert js("window.RADAR_DEVICE && app.controller.state.connected")
+    assert js("!document.getElementById('mode-control').hidden && !document.getElementById('radio-mode').disabled")
+    assert js("document.getElementById('radio-mode').value") == initial_radio["requested_radio_mode"]
+    assert js("Array.from(document.getElementById('radio-mode').options, option=>option.value)") == ["overclocked", "standard"]
     js(
         "app.controller.error='Radar startup is in progress or the FPGA is not loaded';app.controller.notify()"
     )
@@ -118,14 +124,37 @@ try:
         "document.getElementById('connection').getBoundingClientRect().bottom <= document.querySelector('header').getBoundingClientRect().bottom"
     )
     js("app.controller.startup=null;app.controller.error='';app.controller.notify()")
-    if expected_rate == 61440000:
-        assert initial_radio["fallback"]
+    if initial_radio["fallback"]:
+        assert expected_rate == 61440000
         assert js(
-            "document.getElementById('connection').textContent.includes('61.44 MHz') && document.getElementById('connection').textContent.includes('117.1 m')"
+            "document.getElementById('connection').textContent.includes('61.44 MHz') && document.getElementById('connection').textContent.includes('163.5 m')"
         )
         assert js(
             "document.getElementById('sample-rate').textContent.includes('fallback')"
         )
+    if initial_radio.get("wideband_available"):
+        assert js("!document.getElementById('bandwidth-control').hidden")
+        maximum_bandwidth = initial_radio["bandwidth_max_hz"]
+        assert js("Number(document.getElementById('bandwidth-input').max)") == maximum_bandwidth / 1e6
+        js(f"app.controller.bandwidth({maximum_bandwidth})")
+        assert request("state")[1]["rx_bandwidth_hz"] == maximum_bandwidth
+        assert request("state")[1]["tx_bandwidth_hz"] == maximum_bandwidth
+        wide_latency = 1.0734375 if expected_rate == 61440000 else .4140625
+        assert js("app.controller.state.hardware_latency_us") == wide_latency
+        assert js("app.controller.targets.every(t=>!t.enabled)")
+        js("(()=>{const field=document.getElementById('bandwidth-input');field.value='30';field.dispatchEvent(new Event('change'));})()")
+        time.sleep(0.5)
+        custom = request("state")[1]
+        assert custom["rx_bandwidth_hz"] == custom["tx_bandwidth_hz"] == 30000000
+        assert custom["hardware_latency_us"] is None and custom["muted"]
+        assert js("document.getElementById('range-axis-title').textContent") == "Range offset (m)"
+        assert js("document.getElementById('connection').textContent.includes('hardware delay is unknown')")
+        js("app.controller.bandwidth(20000000)")
+        assert request("state")[1]["tx_bandwidth_hz"] == 20000000
+        assert js("app.controller.state.hardware_latency_us") == expected_latency
+    else:
+        assert js("!document.getElementById('bandwidth-control').hidden")
+        assert js("document.getElementById('bandwidth-input').max") == "20"
     known_latency = initial_radio.get("hardware_latency_us") is not None
     assert js(
         "document.getElementById('fit').form===null && document.getElementById('rx-gain').form===null"
@@ -135,7 +164,7 @@ try:
         "document.getElementById('sample-rate').textContent.includes(String(app.controller.state.sample_rate_hz/1e6))"
     )
     assert js(
-        "document.getElementById('bandwidth').textContent.includes('Analog bandwidth 20 MHz')"
+        "document.getElementById('bandwidth-input').value==='20'"
     )
     assert js("document.getElementById('range-axis-title').textContent") == (
         "Total range (m)" if known_latency else "Range offset (m)"
@@ -577,6 +606,28 @@ try:
     print(
         "PASS: target visibility toggle control, axis-label wheel zoom, slider popovers, pinch zoom, gain halos, on-device movement and header status, reserved legend, no click-to-add, RX/TX gain validation and driver readback, scene preservation, rotated axes, centered zero velocity, hidden-target selection, total range, offset-preserving drag and continuous auto-apply, FPGA readback, scene round trip, favicon, actual RF bandwidth, desktop 1080p/900p/720p and mobile layouts"
     )
+    if os.environ.get("RTS_TEST_MODE_SWITCH") == "1":
+        original_mode = initial_radio["requested_radio_mode"]
+        other_mode = "standard" if original_mode == "overclocked" else "overclocked"
+        for mode in [other_mode, original_mode]:
+            js(f"(()=>{{const field=document.getElementById('radio-mode');field.value={json.dumps(mode)};field.dispatchEvent(new Event('change'));}})()")
+            time.sleep(.5)
+            assert js("document.getElementById('radio-mode').disabled")
+            deadline = time.monotonic() + 240
+            while time.monotonic() < deadline:
+                if js("Boolean(app.controller.startup?.failed)"):
+                    raise AssertionError(js("app.controller.error"))
+                state = js("app.controller.state")
+                if state and state.get("connected") and state.get("requested_radio_mode") == mode:
+                    break
+                time.sleep(1)
+            assert state and state["connected"] and state["radio_mode"] == mode, state
+            assert not state["fallback"] and state["muted"] and not state["targets"], state
+            rate = 61440000 if mode == "standard" else 160000000
+            assert state["sample_rate_hz"] == rate
+            assert state["bandwidth_max_hz"] == (30720000 if mode == "standard" else 56000000)
+            assert not js("document.getElementById('radio-mode').disabled")
+            print(f"PASS: browser switched to {mode}, scene cleared and controls ready", flush=True)
 finally:
     js("globalThis.app?.controller.stop()")
     call(
