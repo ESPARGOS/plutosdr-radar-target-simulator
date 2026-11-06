@@ -10,7 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build/tests"
 BUILD.mkdir(parents=True, exist_ok=True)
 cc = os.environ.get("CC", "cc")
-common = [cc, "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-Ihost", "-Itests"]
+# Match fortified libc checks on CI, including unused I/O return values.
+common = [
+    cc,
+    "-std=c11",
+    "-O2",
+    "-D_FORTIFY_SOURCE=2",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Ihost",
+    "-Itests",
+]
 subprocess.run(
     common
     + [

@@ -37,7 +37,8 @@ static const char *requested_mode(void) {
     char value[32] = "";
     FILE *file = fopen(RADAR_MODE_FILE, "r");
     if (file) {
-        (void)fgets(value, sizeof(value), file);
+        if (!fgets(value, sizeof(value), file))
+            value[0] = '\0';
         fclose(file);
     }
     return !strcmp(value, "standard\n") ? "standard" : "overclocked";
