@@ -5,7 +5,8 @@ from build_provenance import verify
 
 if __name__ == "__main__":
     try:
-        manifest = verify()
+        manifests = [verify(mode=mode) for mode in ("overclocked", "standard")]
     except (OSError, ValueError, KeyError) as error:
         raise SystemExit(f"Unverified FPGA build: {error}. Run make fpga.")
-    print(f"Verified FPGA build from {manifest['built_at']}")
+    for manifest in manifests:
+        print(f"Verified FPGA build from {manifest['built_at']}")

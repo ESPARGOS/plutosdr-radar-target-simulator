@@ -58,7 +58,7 @@ The optional movement setting changes its distance over time to match that veloc
 
 Pluto takes a small amount of time to receive and retransmit a signal, even when
 no extra delay is selected. With the default 20 MHz bandwidth, this corresponds
-to about **67.5 m** in overclocked mode or **163.5 m** in standard mode. The web
+to about **67.5 m** in overclocked mode or **202.4 m** in standard mode. The web
 interface includes this delay in the displayed distance and shades the
 unreachable region.
 
@@ -68,13 +68,13 @@ is higher to reduce delay, and does not describe the reflected RF bandwidth.
 
 | Feature | Standard mode | Overclocked mode |
 | --- | --- | --- |
-| Analog bandwidth, common RX/TX setting | 0.2–30.72 MHz | 0.2–56 MHz |
+| Analog bandwidth, common RX/TX setting | 0.2–56 MHz | 0.2–56 MHz |
 | Carrier frequency | 325–3800 MHz, extended to 70 MHz–6 GHz as described below | Same |
 | Hardware | PlutoSDR Rev.B and Rev.C/D | Same |
 | Targets | Up to 4 independent distances, velocities and echo strengths | Same |
 | Maximum simulated distance | About 30.1 km | About 11.6 km |
-| Minimum distance, 20 MHz bandwidth | 163.5 m (1.091 µs) | 67.5 m (0.450 µs) |
-| Minimum distance, widest bandwidth | 160.9 m (1.073 µs) | 62.1 m (0.414 µs) |
+| Minimum distance, 20 MHz bandwidth | 202.4 m (1.350 µs) | 67.5 m (0.450 µs) |
+| Minimum distance, widest bandwidth | 197.7 m (1.319 µs) | 62.1 m (0.414 µs) |
 | Fractional-delay distance step | About 2.38 mm | About 0.915 mm |
 | Doppler step | About 0.014 Hz | About 0.037 Hz |
 | Target gain | −90 to 0 dB per echo | Same |
@@ -113,7 +113,7 @@ depends on the individual device. The limit comes from the
 [AD9363 datasheet, pages 6–7](https://www.analog.com/media/en/technical-documentation/data-sheets/AD9363.pdf).
 
 Select **Standard** or **Overclocked** in the radio panel. Changing modes restarts
-the radio, clears the scene and resets bandwidth to 20 MHz. The selection is
+the radio, clears the scene and preserves bandwidth, carrier frequency and gains. The selection is
 saved across reboots.
 
 At startup, the simulator checks whether the selected mode works. If the

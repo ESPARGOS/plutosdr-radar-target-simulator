@@ -1,6 +1,7 @@
 """Reject stale FPGA sources, substituted artifacts and missing build records."""
 
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -27,6 +28,8 @@ class ProvenanceTests(unittest.TestCase):
             (self.root / directory).mkdir(parents=True)
         for name in [
             "prepare_hdl.py",
+            "prepare_standard_hdl.py",
+            "generate_standard_filters.py",
             "generate_rom.py",
             "generate_fractional_rom.py",
             "bootstrap_hdl.sh",
@@ -53,6 +56,22 @@ class ProvenanceTests(unittest.TestCase):
             },
         }
         (self.root / provenance.MANIFEST).write_text(json.dumps(manifest))
+
+    def test_standard_image_has_independent_provenance(self):
+        shutil.copytree(self.root / "vendor/adi-hdl", self.root / "build/standard-hdl")
+        _, _, bitstream, timing, manifest_path = provenance.layout("standard")
+        manifest = {
+            "schema": 1,
+            "sources": provenance.snapshot(self.root, "standard"),
+            "artifacts": {str(path): provenance.digest(self.root / path)
+                          for path in (bitstream, timing)},
+        }
+        (self.root / manifest_path).write_text(json.dumps(manifest))
+        provenance.verify(self.root, "standard")
+        (self.root / bitstream).write_text("substituted standard image")
+        with self.assertRaises(ValueError):
+            provenance.verify(self.root, "standard")
+        provenance.verify(self.root)
 
     def test_matching_build(self):
         provenance.verify(self.root)

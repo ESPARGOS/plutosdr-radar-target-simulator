@@ -3,7 +3,9 @@ prepare:
 	./scripts/bootstrap_hdl.sh
 	python3 scripts/generate_rom.py
 	python3 scripts/generate_fractional_rom.py
+	python3 scripts/generate_standard_filters.py
 	python3 scripts/prepare_hdl.py
+	python3 scripts/prepare_standard_hdl.py
 test: prepare
 	./scripts/container.sh bash tests/run.sh
 fpga: prepare

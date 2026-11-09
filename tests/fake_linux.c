@@ -38,6 +38,8 @@ int radar_linux_open(radar_device *device, radar_linux *backend) {
     }
     if (getenv("RADAR_TEST_EIGHT_TAPS"))
         fake.registers[RADAR_REG_VERSION] = 0x20002;
+    if (getenv("RADAR_TEST_STANDARD_FULL"))
+        fake.registers[RADAR_REG_VERSION] = 0x20003;
     const char *mask = getenv("RADAR_TEST_MASK");
     if (mask)
         fake.registers[RADAR_REG_ENABLE] = (unsigned)strtoul(mask, NULL, 10);

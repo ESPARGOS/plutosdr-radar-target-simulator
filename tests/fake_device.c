@@ -38,7 +38,7 @@ static void write_register(void *context, unsigned index, uint32_t value) {
     ++fake->register_writes;
     fake->registers[index] = value;
     uint32_t version = fake->registers[RADAR_REG_VERSION];
-    if (index == RADAR_REG_COMMIT && version >= 0x20000 && version <= 0x20002 && (value & 4)) {
+    if (index == RADAR_REG_COMMIT && version >= 0x20000 && version <= 0x20003 && (value & 4)) {
         for (unsigned i = 0; i < 16; ++i)
             fake->registers[RADAR_REG_SNAPSHOT + i] = fake->registers[RADAR_REG_TARGET_BASE + i];
         fake->registers[RADAR_REG_STATUS] = 0;

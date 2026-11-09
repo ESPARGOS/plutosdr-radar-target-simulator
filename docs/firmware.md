@@ -5,7 +5,7 @@
 The simulator runs on **Rev.B and Rev.C Pluto** hardware with the required AD9361 driver
 controls. It does not need Maia SDR installed. The packager preserves the supplied
 Pluto image's kernel, root filesystem, USB/network setup and device trees, then
-adds the radar FPGA, tools, startup script and web interface.
+adds both radar FPGA images, tools, startup script and web interface.
 
 Known radio startup services from DICHASUS and Maia-derived images are removed
 when present, so they cannot compete for the FPGA. Maia device-tree nodes are
@@ -51,6 +51,9 @@ make firmware
 make firmware FIRMWARE_ARGS="--base build/firmware/second-original.itb --output build/firmware/second-pluto"
 sha256sum build/firmware/pluto.frm
 ```
+
+`make fpga` builds separate standard and overclocked images. Both are included
+in the firmware so the radio-panel mode selector can load the matching datapath.
 
 `make firmware` runs `scripts/package_firmware.py`, which requires passing final
 FPGA provenance and timing, plus matching native tools. It also records all
@@ -109,12 +112,12 @@ The web status shows the current stage and elapsed startup time. The FPGA is
 already loaded when the radio checks run.
 If the 160 MSa/s check fails, startup restores and validates the normal 61.44 MSa/s
 profile before enabling the controls. The UI identifies fallback mode
-and uses its 1.090625 µs reference latency (163.5 m minimum range). If either
+and uses its 1.35 µs reference latency (202.4 m minimum range). If either
 recovery or standard-profile validation fails, targets stay muted and the API
 returns an error. The radio-panel mode selector saves the requested mode in
 `/mnt/jffs2/radar-mode`. Selecting Standard skips the 160 MSa/s attempt. A mode
-change mutes transmission, clears targets, resets bandwidth to 20 MHz and runs
-the checks again. Carrier frequency and gains are preserved. A reboot retries
+change mutes transmission, clears targets and runs
+the checks again. Bandwidth, carrier frequency and gains are preserved. A reboot retries
 the selected mode. Read `/tmp/radar-startup.log` or run `/tmp/rtsctl status`
 on the Pluto to diagnose startup failures. Target movement runs in the FPGA. Scenes are not restored on reboot.
 

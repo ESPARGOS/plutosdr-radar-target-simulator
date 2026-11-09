@@ -10,23 +10,22 @@ transmitter. The ARM processor and browser handle settings, not IQ samples.
 
 ## Delay, Doppler and range
 
-Added delay runs from 0 to 12276 samples in steps of 1/1024 sample. Four interleaved memory banks supply the filter taps on every sample clock.
-Each 72-bit memory word holds three complex samples at the ADC’s native
-12-bit precision. The filter uses six taps over ±28 MHz at 160 MSa/s, or eight taps over ±15.36 MHz
-at 61.44 MSa/s. Separate least-squares coefficient tables serve the two sample
-rates. Their fixed delays are two and three samples, respectively, plus the
-selected fraction.
-The coefficients use Q2.16 arithmetic and sum to exactly one after rounding.
-Each pair of targets shares a dual-port coefficient ROM.
-The fixed filter offset is included in the
-hardware latency. The processing pipeline adds eighteen clock cycles after
-sample capture.
+Added delay runs from 0 to 12276 input samples in steps of 1/1024 sample.
+Both operating modes support a 56 MHz signal band, using separate FPGA images.
 
-Over these bands, the quantized filters' worst complex response errors are below
-−61 dB at 160 MSa/s and −57 dB at 61.44 MSa/s. Within a 20 MHz band, the
-standard-mode bound is below −67 dB. These calculated bounds exclude
-rounding the requested delay to the 1/1024-sample grid and quantizing the output
-samples. They are filter characteristics, not measured RF error specifications.
+At 160 MSa/s, each target reads a six-tap fractional-delay filter from its
+sample history. At 61.44 MSa/s, a shared 95-tap half-band filter first doubles
+the sample rate internally. An eight-tap fractional-delay filter then processes
+each target in turn at a 245.76 MHz processing clock. This gives the short
+fractional-delay filter enough bandwidth without overclocking the radio interface.
+The shared sample memory stores both interpolated phases, and the output remains
+at 61.44 MSa/s. The fixed filter delays are included in the hardware latency.
+
+Numerical evaluation of the stored coefficients gives worst complex response
+errors below −61 dB for the overclocked filter and −60 dB for the combined
+standard-mode filters across ±28 MHz. These are filter characteristics, not
+measured RF error specifications. They exclude rounding the requested delay to
+the 1/1024-sample grid and quantizing the output samples.
 
 Each oscillator has a 32-bit phase accumulator and a 1024-entry complex lookup
 table. Two shared multipliers prepare new gain-scaled coefficients in an
@@ -125,8 +124,8 @@ Failed writes attempt to restore the previous settings and verify the result.
 RX and TX tuning ranges, bounded to 70 MHz–6 GHz. If the driver omits these limits,
 the API uses the specified AD9363 range of 325–3800 MHz.
 
-`bandwidth_max_hz` gives the supported upper limit: 56 MHz in overclocked mode,
-30.72 MHz in standard mode, or 20 MHz without the tuning-range extension.
+`bandwidth_max_hz` gives the supported upper limit: 56 MHz in either mode,
+or 20 MHz without the tuning-range extension.
 `wideband_available` indicates support beyond 20 MHz. The minimum request is 200 kHz.
 One bandwidth value configures both RX and TX. Failed changes restore both previous
 settings and leave targets muted.
@@ -134,7 +133,7 @@ settings and leave targets muted.
 Mode changes return HTTP 202 after muting and saving the selection. The radio
 restarts in the background. During calibration, state requests return HTTP 503
 with progress information, and setting changes are rejected. The new mode starts
-with an empty scene and 20 MHz bandwidth, preserving carrier frequency and gains.
+with an empty scene, preserving bandwidth, carrier frequency and gains.
 `requested_radio_mode` is the saved choice, while `radio_mode` describes the
 active profile, which can differ after an automatic fallback.
 
@@ -147,7 +146,7 @@ side of the carrier and is quantized by the calibration divider. See the
 and [driver calibration code](https://github.com/analogdevicesinc/linux/blob/2019_R2/drivers/iio/adc/ad9361.c).
 
 Read `hardware_latency_us` after changing bandwidth. Reference delays are available
-for 20 MHz in both modes, 30.72 MHz in standard mode and 56 MHz in overclocked mode. Other combinations
+for 20 MHz and 56 MHz in both modes. Other combinations
 return null. The UI then labels the plot as range offset and the sidebar as added
 delay, instead of claiming an uncalibrated total range. Filter settings do not
 guarantee a flat end-to-end passband.

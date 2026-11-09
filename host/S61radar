@@ -27,6 +27,7 @@ if [ "$1" = reconfigure ]; then
  carrier=$(cat "$phy/out_altvoltage0_RX_LO_frequency") || exit 1
  read -r rx_gain rest < "$phy/in_voltage0_hardwaregain" || exit 1
  read -r tx_gain rest < "$phy/out_voltage0_hardwaregain" || exit 1
+ bandwidth=$(cat "$phy/in_voltage_rf_bandwidth") || exit 1
  rm -f /tmp/radar-loaded
  set -- start
 fi
@@ -42,7 +43,8 @@ case "$1" in
   cp /usr/bin/radar.cgi /www/cgi-bin/radar.cgi.new || exit 1
   mv /www/cgi-bin/radar.cgi.new /www/cgi-bin/radar.cgi || exit 1
   chmod 755 /www/cgi-bin/radar.cgi || exit 1
-  if ! sh /usr/bin/radar-radio-setup > /tmp/radar-startup.log 2>&1; then
+  if ! sh /usr/bin/radar-load-profile "$mode" > /tmp/radar-startup.log 2>&1 ||
+     ! sh /usr/bin/radar-radio-setup >> /tmp/radar-startup.log 2>&1; then
    touch /tmp/radar-failed
    echo 'Radio setup failed; targets muted; see /tmp/radar-startup.log'
    exit 1
@@ -59,7 +61,9 @@ case "$1" in
     touch /tmp/radar-fallback
     progress fallback
     echo '160 MSa/s calibration failed; trying 61.44 MSa/s' >> /tmp/radar-startup.log
-    if ! sh /usr/bin/radar-radio-fast 61440000 >> /tmp/radar-startup.log 2>&1; then
+    if ! sh /usr/bin/radar-load-profile standard >> /tmp/radar-startup.log 2>&1 ||
+       ! sh /usr/bin/radar-radio-setup >> /tmp/radar-startup.log 2>&1 ||
+       ! sh /usr/bin/radar-radio-fast 61440000 >> /tmp/radar-startup.log 2>&1; then
      touch /tmp/radar-failed
      echo 'Both radio profiles failed; targets muted; see /tmp/radar-startup.log'
      exit 1
@@ -67,11 +71,15 @@ case "$1" in
    fi
   fi
   if [ "$reconfigure" = 1 ]; then
+   for d in /sys/bus/iio/devices/iio:device*; do
+    if [ "$(cat "$d/name")" = ad9361-phy ]; then phy=$d; break; fi
+   done
    # Delay words refer to a different sample interval after switching rates.
    # Clear the old scene, keeping carrier and radio gains while still muted.
    if ! { printf '0\n0 0 0\n0 0 0\n0 0 0\n0 0 0\n' | /tmp/rtsctl apply; } ||
       ! echo "$carrier" > "$phy/out_altvoltage0_RX_LO_frequency" ||
       ! echo "$carrier" > "$phy/out_altvoltage1_TX_LO_frequency" ||
+      ! /tmp/rtsctl bandwidth "$bandwidth" ||
       ! echo "$rx_gain" > "$phy/in_voltage0_hardwaregain" ||
       ! echo "$tx_gain" > "$phy/out_voltage0_hardwaregain"; then
     touch /tmp/radar-failed

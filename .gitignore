@@ -5,6 +5,8 @@
 /clockInfo.txt
 # Recreated by make prepare from the fractional-delay coefficient generator
 /rtl/fractional_rom.sv
+/rtl/standard_fir.sv
+/rtl/standard_upsample.sv
 __pycache__/
 *.py[cod]
 *.log

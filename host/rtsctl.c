@@ -1,6 +1,9 @@
 #include "radar_control.h"
 #include "radar_linux.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 #include <string.h>
 
 static void print_status(radar_device *device) {
@@ -23,9 +26,20 @@ static void print_status(radar_device *device) {
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2 ||
-        (strcmp(argv[1], "status") && strcmp(argv[1], "apply") && strcmp(argv[1], "mute"))) {
-        fputs("usage: rtsctl status|apply|mute\n", stderr);
+    unsigned bandwidth = 0;
+    bool set_bandwidth = argc == 3 && !strcmp(argv[1], "bandwidth");
+    if (set_bandwidth) {
+        char *end;
+        errno = 0;
+        unsigned long value = strtoul(argv[2], &end, 10);
+        if (errno || !*argv[2] || *end || value > UINT_MAX || value < 200000) {
+            fputs("Invalid bandwidth in Hz\n", stderr);
+            return 2;
+        }
+        bandwidth = (unsigned)value;
+    } else if (argc != 2 ||
+               (strcmp(argv[1], "status") && strcmp(argv[1], "apply") && strcmp(argv[1], "mute"))) {
+        fputs("usage: rtsctl status|apply|mute|bandwidth HZ\n", stderr);
         return 2;
     }
     radar_scene scene;
@@ -46,7 +60,9 @@ int main(int argc, char **argv) {
         return 1;
     }
     int result = 0;
-    if (!strcmp(argv[1], "apply")) {
+    if (set_bandwidth)
+        result = radar_set_bandwidth(&device, bandwidth);
+    else if (!strcmp(argv[1], "apply")) {
         result = radar_apply(&device, &scene);
     } else if (!strcmp(argv[1], "mute"))
         result = radar_mute(&device);

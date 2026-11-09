@@ -9,7 +9,7 @@ accepted independently.
 | Byte offset | Meaning |
 | --- | --- |
 | 0x00 | Signature `0x52545331` (`RTS1`) |
-| 0x04 | Interface version `0x00020002` |
+| 0x04 | Interface version `0x00020002` (overclocked), `0x00020003` (standard) |
 | 0x08 | Number of targets: 4 |
 | 0x0c | Maximum programmable delay: 12276 samples |
 | 0x10 | Command: bit 0 commits a scene, bit 1 also restarts phase, bit 2 requests a live snapshot |

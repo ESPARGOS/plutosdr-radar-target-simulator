@@ -52,7 +52,7 @@ class Controller:
         self.connected = True
         self.error = None
         result = json.loads(p.stdout)
-        self.fraction_bits = 10 if result.get("version") in (0x00020000, 0x00020001, 0x00020002) else 0
+        self.fraction_bits = 10 if result.get("version") in (0x00020000, 0x00020001, 0x00020002, 0x00020003) else 0
         self.max_delay = result.get(
             "max_delay_samples", 2047 if result.get("version") == 0x00010010 else 8191
         )

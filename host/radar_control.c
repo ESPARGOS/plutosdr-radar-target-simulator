@@ -75,7 +75,7 @@ int radar_parse_scene(const char *text, radar_scene *scene) {
 
 bool radar_fpga_motion(radar_device *device) {
     uint32_t version = device->io->read_register(device->context, RADAR_REG_VERSION);
-    return version >= 0x00020000 && version <= 0x00020002;
+    return version >= 0x00020000 && version <= 0x00020003;
 }
 unsigned radar_max_delay(radar_device *device) {
     return device->io->read_register(device->context, RADAR_REG_MAX_DELAY);
@@ -321,7 +321,8 @@ bool radar_wide_bandwidth_available(radar_device *device) {
     unsigned version = device->io->read_register(device->context, RADAR_REG_VERSION);
     unsigned rate = radar_sample_rate(device);
     if (!((version == 0x00020001 && rate == 160000000) ||
-          (version == 0x00020002 && (rate == 160000000 || rate == 61440000))))
+          (version == 0x00020002 && (rate == 160000000 || rate == 61440000)) ||
+          (version == 0x00020003 && rate == 61440000)))
         return false;
     uint64_t carrier_low, carrier_high;
     radar_carrier_limits(device, &carrier_low, &carrier_high);
@@ -341,7 +342,9 @@ bool radar_wide_bandwidth_available(radar_device *device) {
 unsigned radar_max_bandwidth(radar_device *device) {
     if (!radar_wide_bandwidth_available(device))
         return 20000000;
-    return radar_sample_rate(device) == 61440000 ? 30720000 : 56000000;
+    unsigned version = device->io->read_register(device->context, RADAR_REG_VERSION);
+    return radar_sample_rate(device) == 61440000 && version != 0x00020003
+               ? 30720000 : 56000000;
 }
 
 int radar_set_bandwidth(radar_device *device, unsigned hz) {

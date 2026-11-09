@@ -10,7 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class StartupTests(unittest.TestCase):
-    def run_startup(self, setup_status, calibration_status, standard_status=0, mode="overclocked", reconfigure=False):
+    def run_startup(self, setup_status, calibration_status, standard_status=0, mode="overclocked", reconfigure=False, load_status=0):
+        setup_failed = bool(setup_status or load_status)
         (ROOT / "build/tests").mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=ROOT / "build/tests") as directory:
             root = Path(directory)
@@ -21,10 +22,12 @@ class StartupTests(unittest.TestCase):
             phy.mkdir(parents=True)
             for name, value in {"name": "ad9361-phy", "out_altvoltage0_RX_LO_frequency": "2385000000",
                                 "in_voltage0_hardwaregain": "31.000000 dB",
-                                "out_voltage0_hardwaregain": "-27.000000 dB"}.items():
+                                "out_voltage0_hardwaregain": "-27.000000 dB",
+                                "in_voltage_rf_bandwidth": "56000000"}.items():
                 (phy / name).write_text(value + "\n")
             for name, status in {
                 "rtsctl": 0,
+                "radar-load-profile": load_status,
                 "radar.cgi": 0,
                 "radar-radio-setup": setup_status,
             }.items():
@@ -61,7 +64,7 @@ class StartupTests(unittest.TestCase):
                 stage,
                 (
                     "radio"
-                    if setup_status
+                    if setup_failed
                     else (
                         ("standard" if mode == "standard" else "fallback")
                         if standard_status and (mode == "standard" or calibration_status)
@@ -71,9 +74,9 @@ class StartupTests(unittest.TestCase):
             )
             self.assertEqual(
                 (root / "tmp/radar-fallback").exists(),
-                not setup_status and mode != "standard" and bool(calibration_status),
+                not setup_failed and mode != "standard" and bool(calibration_status),
             )
-            if setup_status or (standard_status and (mode == "standard" or calibration_status)):
+            if setup_failed or (standard_status and (mode == "standard" or calibration_status)):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse((root / "tmp/radar-loaded").exists())
                 self.assertTrue((root / "tmp/radar-failed").exists())
@@ -85,6 +88,9 @@ class StartupTests(unittest.TestCase):
                     self.assertEqual((phy / "in_voltage0_hardwaregain").read_text().strip(), "31.000000")
                     self.assertEqual((phy / "out_voltage0_hardwaregain").read_text().strip(), "-27.000000")
                     self.assertEqual((phy / "out_altvoltage1_TX_LO_frequency").read_text().strip(), "2385000000")
+
+    def test_fpga_load_failure_keeps_controls_unavailable(self):
+        self.run_startup(0, 0, load_status=1)
 
     def test_radio_setup_failure(self):
         self.run_startup(1, 0)

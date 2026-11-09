@@ -49,7 +49,9 @@ for mode, rate in [("standard", 61440000), ("overclocked", 160000000)]:
     assert state["muted"] and not state["targets"]
     for field in ["frequency_hz", "rx_gain_db", "tx_gain_db"]:
         assert abs(state[field] - original[field]) < 1, (field, state[field], original[field])
-    assert state["rx_bandwidth_hz"] == state["tx_bandwidth_hz"] == 20000000
-    expected_latency = 1.090625 if mode == "standard" else .45
+    assert state["rx_bandwidth_hz"] == original["rx_bandwidth_hz"]
+    assert state["tx_bandwidth_hz"] == original["tx_bandwidth_hz"]
+    assert state["bandwidth_max_hz"] == 56000000
+    expected_latency = (1.35 if mode == "standard" else .45) if original["rx_bandwidth_hz"] == 20000000 else (1.31875 if mode == "standard" else .4140625) if original["rx_bandwidth_hz"] == 56000000 else None
     assert state["hardware_latency_us"] == expected_latency
-    print(f"PASS: {mode}, {rate / 1e6:g} MSa/s, {expected_latency:g} µs, empty muted scene", flush=True)
+    print(f"PASS: {mode}, {rate / 1e6:g} MSa/s, {expected_latency} µs, empty muted scene", flush=True)

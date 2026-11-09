@@ -17,7 +17,7 @@ qec_mode=$debug/adi,qec-tracking-slow-mode-enable
 checker=/tmp/radio-pn
 [ -x "$checker" ] || checker=/usr/bin/radio-pn
 version=$(devmem 0x43c00004)
-{ [ "$version" = 0x00010010 ] || [ "$version" = 0x00010011 ] || [ "$version" = 0x00020000 ] || [ "$version" = 0x00020001 ] || [ "$version" = 0x00020002 ]; } || { echo "Unsupported radar FPGA revision: $version" >&2; exit 2; }
+{ [ "$version" = 0x00010010 ] || [ "$version" = 0x00010011 ] || [ "$version" = 0x00020000 ] || [ "$version" = 0x00020001 ] || [ "$version" = 0x00020002 ] || [ "$version" = 0x00020003 ]; } || { echo "Unsupported radar FPGA revision: $version" >&2; exit 2; }
 rx_saved=;tx_saved=;io_saved=;qec_saved=;complete=0
 recovery=/tmp/radar-fast-recovery
 if [ -f "$recovery" ]; then
@@ -77,6 +77,20 @@ restore_normal() {
  rm -f "$recovery"
 }
 if [ "$wanted" = restore ]; then restore_normal; exit $?; fi
+if [ "$version" = 0x00020003 ] && [ "$wanted" = 160000000 ]; then
+ echo 'Load the overclocked FPGA before selecting 160 MSa/s' >&2
+ exit 2
+fi
+if [ "$version" = 0x00020003 ] && [ "$wanted" = 61440000 ]; then
+ # Rebinding the radio driver already calibrates the standard interface.
+ # Search the timing eye only if that calibration does not pass our checks.
+ [ "$(cat "$phy/in_voltage_sampling_frequency")" = 61440000 ]
+ "$checker" 1 || "$checker" 1 --tune
+ /tmp/rtsctl mute
+ echo 25 > "$phy/in_voltage0_hardwaregain"
+ echo -35 > "$phy/out_voltage0_hardwaregain"
+ exit 0
+fi
 if [ "$wanted" = 61440000 ]; then
  restore_normal || exit 2
  set -e

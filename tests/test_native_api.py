@@ -106,6 +106,14 @@ assert standard_bandwidth[0] == 200
 assert standard_bandwidth[1]["hardware_latency_us"] == 1.0734375
 assert request("bandwidth", b"20000000", **standard_wide)[1]["hardware_latency_us"] == 1.090625
 assert request("bandwidth", b"30720001", **standard_wide)[0] == 400
+wide_standard = {**standard_wide, "RADAR_TEST_STANDARD_FULL": "1"}
+assert request("state", **wide_standard)[1]["bandwidth_max_hz"] == 56000000
+response = request("bandwidth", b"56000000", **wide_standard)
+assert response[0] == 200 and response[1]["hardware_latency_us"] == 1.31875
+assert response[1]["rx_bandwidth_hz"] == response[1]["tx_bandwidth_hz"] == 56000000
+assert request("bandwidth", b"20000000", **wide_standard)[1]["hardware_latency_us"] == 1.35
+assert request("bandwidth", b"56000001", **wide_standard)[0] == 400
+
 fast_bandwidth = request("bandwidth", b"56000000", RADAR_TEST_WIDEBAND="1",
                          RADAR_TEST_EIGHT_TAPS="1")
 assert fast_bandwidth[0] == 200 and fast_bandwidth[1]["hardware_latency_us"] == .4140625

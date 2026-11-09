@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 python3 tests/test_fractional_response.py
+python3 tests/test_standard_response.py
+python3 tests/test_standard_datapath.py
 python3 tests/test_fractional_delay.py
 python3 tests/test_fpga_motion.py
 python3 tests/test_datapath.py

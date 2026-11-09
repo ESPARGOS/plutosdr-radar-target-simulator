@@ -41,25 +41,19 @@ for pair in 'cf_axi_dds 79024000.cf-ad9361-dds-core-lpc' 'cf_axi_adc 79020000.cf
  set -- $pair
  if [ ! -L "/sys/bus/platform/devices/$2/driver" ]; then echo "$2" > "/sys/bus/platform/drivers/$1/bind"; fi
 done
-if ! sh /tmp/radio_setup.sh; then
- touch /tmp/radar-failed
- echo 'Radio setup failed; targets muted; simulator unavailable'
- exit 1
-fi
-if ! sh /tmp/radio_fast_setup.sh; then
- touch /tmp/radar-fallback
- if ! sh /tmp/radio_fast_setup.sh 61440000; then
-  touch /tmp/radar-failed
-  echo 'Both radio profiles failed; targets muted; simulator unavailable'
-  exit 1
- fi
-fi
-if [ -f /tmp/radar-web.tar ] && [ -f /tmp/radar.cgi ]; then
- mkdir -p /www/cgi-bin
- tar -xf /tmp/radar-web.tar -C /www
- cp /tmp/radar.cgi /www/cgi-bin/radar.cgi.new
- chmod 755 /www/cgi-bin/radar.cgi.new
- mv /www/cgi-bin/radar.cgi.new /www/cgi-bin/radar.cgi
-fi
-touch /tmp/radar-loaded
+# Install the matching runtime in the RAM-backed root filesystem. Mode changes
+# now use the same service as a flashed image, including automatic fallback.
+cp /tmp/radar.bin /lib/firmware/radar-overclocked.bin
+cp /tmp/radar-standard.bin /lib/firmware/radar-standard.bin
+cp /tmp/rtsctl /usr/bin/rtsctl
+cp /tmp/radio-pn /usr/bin/radio-pn
+cp /tmp/radar.cgi /usr/bin/radar.cgi
+cp /tmp/radio_setup.sh /usr/bin/radar-radio-setup
+cp /tmp/radio_fast_setup.sh /usr/bin/radar-radio-fast
+cp /tmp/load_profile.sh /usr/bin/radar-load-profile
+cp /tmp/S61radar /etc/init.d/S61radar
+chmod 755 /usr/bin/rtsctl /usr/bin/radio-pn /usr/bin/radar.cgi /etc/init.d/S61radar
+mkdir -p /usr/share/radar-web
+tar -xf /tmp/radar-web.tar -C /usr/share/radar-web
+sh /etc/init.d/S61radar start
 printf 'Volatile radar image loaded. Reboot Pluto to restore the installed firmware.\n'

@@ -25,6 +25,7 @@ def package(firmware, output):
         manifest.get("inputs", {}),
         manifest.get("native", {}).get("sources", {}),
         manifest.get("fpga", {}).get("sources", {}),
+        manifest.get("fpga_standard", {}).get("sources", {}),
     ):
         for name, expected in sources.items():
             if name == "base_firmware":

@@ -33,6 +33,8 @@ def package_inputs(base):
     paths = [
         "host/S61radar",
         "scripts/radio_setup.sh",
+        "scripts/load_profile.sh",
+        "scripts/bit_to_bin.py",
         "scripts/radio_fast_setup.sh",
         "scripts/package_firmware.py",
     ]
@@ -59,6 +61,7 @@ def main():
         parser.error("Back up and extract the base FIT first")
     output.mkdir(parents=True, exist_ok=True)
     fpga = build_provenance.verify()
+    standard_fpga = build_provenance.verify(mode="standard")
     native = build_tools.verify()
     inputs = package_inputs(base)
     (output / "firmware-manifest.json").unlink(missing_ok=True)
@@ -140,6 +143,7 @@ def main():
     startup = (ROOT / "host/S61radar").read_bytes()
     additions = {
         "usr/bin/rtsctl": (ROOT / "build/rtsctl").read_bytes(),
+        "usr/bin/radar-load-profile": (ROOT / "scripts/load_profile.sh").read_bytes(),
         "usr/bin/radar-radio-setup": (ROOT / "scripts/radio_setup.sh").read_bytes(),
         "usr/bin/radar-radio-fast": (ROOT / "scripts/radio_fast_setup.sh").read_bytes(),
         "usr/bin/radio-pn": (ROOT / "build/radio-pn").read_bytes(),
@@ -162,6 +166,16 @@ def main():
     for name, payload in additions.items():
         records.pop("./" + name, None)
         records[name] = (new_record(name, payload), payload)
+    records["lib/firmware"] = (new_record("lib/firmware", b"", 0o40755), b"")
+    for mode in ("standard", "overclocked"):
+        bitstream = ROOT / build_provenance.layout(mode)[2]
+        binary = output / f"radar-{mode}.bin"
+        subprocess.run(["python3", str(ROOT / "scripts/bit_to_bin.py"),
+                        str(bitstream), str(binary)], check=True)
+        name = "lib/firmware/" + binary.name
+        records.pop("./" + name, None)
+        payload = binary.read_bytes()
+        records[name] = (new_record(name, payload, 0o100644), payload)
     archive = b"".join(r[0] for r in records.values()) + new_record(
         "TRAILER!!!", b"", 0
     )
@@ -217,6 +231,7 @@ def main():
     if (
         inputs != package_inputs(base)
         or fpga != build_provenance.verify()
+        or standard_fpga != build_provenance.verify(mode="standard")
         or native != build_tools.verify()
     ):
         raise RuntimeError("Firmware inputs changed while packaging")
@@ -225,6 +240,7 @@ def main():
         "built_at": datetime.now(timezone.utc).isoformat(),
         "inputs": inputs,
         "fpga": fpga,
+        "fpga_standard": standard_fpga,
         "native": native,
         "artifacts": {
             name: build_provenance.digest(output / name)

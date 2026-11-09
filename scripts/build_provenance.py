@@ -16,11 +16,23 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def source_paths(root):
+def layout(mode="overclocked"):
+    if mode not in ("standard", "overclocked"):
+        raise ValueError("Unknown FPGA mode")
+    vendor = Path("build/standard-hdl" if mode == "standard" else "vendor/adi-hdl")
+    project = vendor / "projects/pluto"
+    manifest = Path("build/fpga-standard-manifest.json" if mode == "standard" else "build/fpga-manifest.json")
+    return vendor, project, project / "pluto.runs/impl_1/system_top.bit", project / "timing_impl.log", manifest
+
+
+def source_paths(root, mode="overclocked"):
+
     files = {
         Path("scripts") / name
         for name in (
             "prepare_hdl.py",
+            "prepare_standard_hdl.py",
+            "generate_standard_filters.py",
             "generate_rom.py",
             "generate_fractional_rom.py",
             "bootstrap_hdl.sh",
@@ -35,7 +47,7 @@ def source_paths(root):
             for path in (root / directory).rglob("*")
             if path.is_file()
         )
-    vendor = Path("vendor/adi-hdl")
+    vendor = layout(mode)[0]
     inventory = vendor / ".radar-source-files.json"
     files.add(inventory)
     for name in json.loads((root / inventory).read_text()):
@@ -52,15 +64,16 @@ def source_paths(root):
     return sorted(files)
 
 
-def snapshot(root=ROOT):
-    return {str(path): digest(root / path) for path in source_paths(root)}
+def snapshot(root=ROOT, mode="overclocked"):
+    return {str(path): digest(root / path) for path in source_paths(root, mode)}
 
 
-def verify(root=ROOT):
-    manifest = json.loads((root / MANIFEST).read_text())
+def verify(root=ROOT, mode="overclocked"):
+    _, _, bitstream, timing, manifest_path = layout(mode)
+    manifest = json.loads((root / manifest_path).read_text())
     if manifest.get("schema") != 1:
         raise ValueError("Unsupported FPGA manifest")
-    current = snapshot(root)
+    current = snapshot(root, mode)
     if current != manifest["sources"]:
         changed = sorted(
             path
@@ -70,9 +83,9 @@ def verify(root=ROOT):
         raise ValueError(
             "FPGA sources changed; run make fpga: " + ", ".join(changed[:8])
         )
-    for path in (BITSTREAM, TIMING):
+    for path in (bitstream, timing):
         if digest(root / path) != manifest["artifacts"].get(str(path)):
             raise ValueError(f"FPGA artifact changed since build: {path}")
-    if PASS_MESSAGE not in (root / TIMING).read_text():
+    if PASS_MESSAGE not in (root / timing).read_text():
         raise ValueError("FPGA implementation failed timing")
     return manifest

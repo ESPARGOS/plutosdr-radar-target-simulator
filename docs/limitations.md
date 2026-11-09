@@ -4,9 +4,9 @@
 
 The web interface includes a reference receive-to-transmit delay when converting
 an echo's delay to distance. The reference is 0.45 µs in the faster mode and
-1.090625 µs in standard mode, corresponding to minimum distances of about 67.5 m
-and 163.5 m. The wide overclocked profile uses 0.4140625 µs, or about 62.1 m.
-Standard mode at 30.72 MHz uses 1.0734375 µs, or about 160.9 m.
+1.35 µs in standard mode, corresponding to minimum distances of about 67.5 m
+and 202.4 m. The wide overclocked profile uses 0.4140625 µs, or about 62.1 m.
+Standard mode at 56 MHz uses 1.31875 µs, or about 197.7 m.
 These are reference values, not individual calibration of your Pluto.
 The shaded area below the minimum distance cannot contain targets.
 
@@ -20,8 +20,8 @@ new distance can still change phase abruptly.
 The 160 MSa/s mode runs the radio interface above its specified 61.44 MHz limit.
 Startup checks both receive and transmit operation before enabling the controls.
 If the faster mode fails, the simulator tries 61.44 MSa/s. Both modes start with
-20 MHz analog filters. A common RX/TX bandwidth can be adjusted up to 56 MHz in overclocked mode
-or 30.72 MHz in standard mode when the tuning range extension is enabled. Custom filter
+20 MHz analog filters. A common RX/TX bandwidth can be adjusted up to 56 MHz in either
+mode when the tuning range extension is enabled. Custom filter
 combinations without a reference hardware delay display range offset rather than
 total range. A startup check cannot guarantee
 long-term stability at an overclocked rate.

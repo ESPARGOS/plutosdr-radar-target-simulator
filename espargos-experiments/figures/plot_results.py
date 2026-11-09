@@ -61,7 +61,7 @@ def range_doppler(ax):
             reduced.T,
             shading="flat",
             cmap="magma",
-            vmin=-40,
+            vmin=-35,
             vmax=0,
             rasterized=True,
         )
@@ -104,7 +104,7 @@ def range_doppler(ax):
         image, ax=ax, orientation="vertical", pad=0.025, fraction=0.035, aspect=25
     )
     colorbar.set_label("Relative power (dB)", fontsize=7)
-    colorbar.set_ticks([-40, -20, 0])
+    colorbar.set_ticks([-30, -20, -10, 0])
 
 
 def main():

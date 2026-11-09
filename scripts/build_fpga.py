@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build from a clean FPGA project and record its inputs and outputs."""
 
+import argparse
 import datetime
 import json
 import os
@@ -15,26 +16,28 @@ from build_provenance import (
     digest,
     snapshot,
     verify,
+    layout,
 )
 
 
-def main():
+def build(mode):
+    _, project, bitstream, timing, manifest_file = layout(mode)
     try:
-        verify()
+        verify(mode=mode)
         print("FPGA sources and artifacts match the passing build manifest")
         return
     except (OSError, ValueError, KeyError):
         pass
-    before = snapshot()
-    manifest_path = ROOT / MANIFEST
+    before = snapshot(mode=mode)
+    manifest_path = ROOT / manifest_file
     manifest_path.unlink(missing_ok=True)
     tool = subprocess.check_output(["vivado", "-version"], text=True)
     # Do not bless an old bitstream merely because make considered it up to date.
-    subprocess.run(["make", "-C", str(ROOT / PROJECT), "clean-all"], check=True)
-    subprocess.run(["make", "-C", str(ROOT / PROJECT)], check=True)
-    if snapshot() != before:
+    subprocess.run(["make", "-C", str(ROOT / project), "clean-all"], check=True)
+    subprocess.run(["make", "-C", str(ROOT / project)], check=True)
+    if snapshot(mode=mode) != before:
         raise SystemExit("Sources changed during FPGA build; no manifest was written")
-    if PASS_MESSAGE not in (ROOT / TIMING).read_text():
+    if PASS_MESSAGE not in (ROOT / timing).read_text():
         raise SystemExit("FPGA implementation failed timing; no manifest was written")
     manifest = {
         "schema": 1,
@@ -42,15 +45,19 @@ def main():
         "toolchain": tool.strip(),
         "container_image": os.environ.get("RTS_BUILD_IMAGE", "unknown"),
         "sources": before,
-        "artifacts": {str(path): digest(ROOT / path) for path in (BITSTREAM, TIMING)},
+        "artifacts": {str(path): digest(ROOT / path) for path in (bitstream, timing)},
     }
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     temporary = manifest_path.with_suffix(".json.new")
     temporary.write_text(json.dumps(manifest, indent=2) + "\n")
     temporary.replace(manifest_path)
-    verify()
+    verify(mode=mode)
     print(f"Verified build manifest: {manifest_path}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--mode", choices=("standard", "overclocked", "both"), default="both")
+    mode = parser.parse_args().mode
+    for selected in (("standard", "overclocked") if mode == "both" else (mode,)):
+        build(selected)

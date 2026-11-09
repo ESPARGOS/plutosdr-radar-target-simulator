@@ -45,7 +45,7 @@ def main():
             axes[1].plot(data["command_time_s"], speed_plot, linestyle=second_pass_style, color="#a6ef8a", linewidth=.7, dash_capstyle="round")
         from matplotlib.lines import Line2D
         fig.legend(handles=[Line2D([], [], color="#168caa", linestyle="-", linewidth=.8, label="Target settings"),
-                            Line2D([], [], color="#438b35", linestyle=second_pass_style, linewidth=.7, dash_capstyle="round", label="Second pass")],
+                            Line2D([], [], color="#438b35", linestyle=second_pass_style, linewidth=.7, dash_capstyle="round", label="Self-interference (second pass)")],
                    loc="upper center", bbox_to_anchor=(.48, 1.02), ncol=2, frameon=False)
         axes[0].set_ylim(50, 515)
         axes[0].set_yticks([100, 200, 300, 400, 500])

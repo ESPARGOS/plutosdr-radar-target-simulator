@@ -35,7 +35,7 @@ maximum_delay = round(
 )
 assert request("apply", ("15\n" + f"{maximum_delay + 1} 0 1\n" * 4).encode())[0] == 400
 expected_rate = int(os.environ.get("RTS_EXPECTED_RATE", "160000000"))
-expected_latency = 1.090625 if expected_rate == 61440000 else .45
+expected_latency = 1.35 if expected_rate == 61440000 else .45
 assert abs(initial_radio["sample_rate_hz"] - expected_rate) <= 100, initial_radio
 assert initial_radio.get("hardware_latency_us") == expected_latency, initial_radio
 for payload in (
@@ -127,7 +127,7 @@ try:
     if initial_radio["fallback"]:
         assert expected_rate == 61440000
         assert js(
-            "document.getElementById('connection').textContent.includes('61.44 MHz') && document.getElementById('connection').textContent.includes('163.5 m')"
+            "document.getElementById('connection').textContent.includes('61.44 MHz') && document.getElementById('connection').textContent.includes('202.4 m')"
         )
         assert js(
             "document.getElementById('sample-rate').textContent.includes('fallback')"
@@ -139,7 +139,7 @@ try:
         js(f"app.controller.bandwidth({maximum_bandwidth})")
         assert request("state")[1]["rx_bandwidth_hz"] == maximum_bandwidth
         assert request("state")[1]["tx_bandwidth_hz"] == maximum_bandwidth
-        wide_latency = 1.0734375 if expected_rate == 61440000 else .4140625
+        wide_latency = 1.31875 if expected_rate == 61440000 else .4140625
         assert js("app.controller.state.hardware_latency_us") == wide_latency
         assert js("app.controller.targets.every(t=>!t.enabled)")
         js("(()=>{const field=document.getElementById('bandwidth-input');field.value='30';field.dispatchEvent(new Event('change'));})()")
@@ -319,7 +319,7 @@ try:
     )
     # A click on the marker's rim must not move it. A drag preserves the grab offset.
     js(
-        "app.plot.setWindow('range',350);app.plot.setWindow('velocity',10);app.plot.draw()"
+        "app.plot.setWindow('range',Math.max(350,sceneModel.totalRange(app.controller.targets[0],app.controller.state)*1.25));app.plot.setWindow('velocity',10);app.plot.draw()"
     )
     start = js(
         "(()=>{const p=app.plot.point(app.controller.targets[0]);const q=new DOMPoint(p.x+6,p.y+3).matrixTransform(document.getElementById('plot').getScreenCTM());return {x:q.x,y:q.y};})()"
@@ -625,7 +625,7 @@ try:
             assert not state["fallback"] and state["muted"] and not state["targets"], state
             rate = 61440000 if mode == "standard" else 160000000
             assert state["sample_rate_hz"] == rate
-            assert state["bandwidth_max_hz"] == (30720000 if mode == "standard" else 56000000)
+            assert state["bandwidth_max_hz"] == 56000000
             assert not js("document.getElementById('radio-mode').disabled")
             print(f"PASS: browser switched to {mode}, scene cleared and controls ready", flush=True)
 finally:

@@ -77,6 +77,75 @@ constant receiver phase weights from its independent reference. No target-positi
 mask is applied to the power maps. Optional native ADC diagnostics are omitted
 from the recipes because they are not inputs to the paper plots.
 
+## Small range steps
+
+Select standard mode in the web interface, then acquire ten independent sweeps
+covering about 100 mm in approximately 10 mm steps. Each sweep has its own RF
+calibration and zero-delay reference captures at the beginning and end.
+
+```sh
+python3 scripts/range_steps.py capture --mode standard --execute
+# Select overclocked mode in the web interface before the second acquisition.
+python3 scripts/range_steps.py capture --mode overclocked --execute
+python3 scripts/range_steps.py analyze
+```
+
+The setup environment variables above also apply here. Without `--execute`,
+acquisition only prints the commands. The script checks the active sample rate
+and does not switch operating modes. Both measurements use a 55 MHz occupied
+OFDM signal at 2385 MHz and 56 MHz simulator bandwidth. Acquisition mutes both
+devices on exit but leaves the measurement gains and bandwidth configured.
+
+Results are saved in `build/range-steps/`. The analysis corrects linear drift
+between the two reference captures and converts delay changes to monostatic range
+changes using $\Delta R=c\Delta\tau/2$. Reference points are excluded from the
+statistics. The figure shows the median and empirical 10th–90th percentiles
+across independent sweeps, not a confidence interval for the median. Alternate
+sweeps visit the requested positions in reverse order. Positions are rounded to
+the simulator's delay increments and the programmed values are used on the axis.
+
+`range-steps.json` contains all individual range estimates and the plot statistics.
+Run `python3 scripts/range_steps.py plot` to redraw the figure from this summary
+without the raw recordings. `--output PATH` selects another directory for any of
+these commands. `--repeats`, `--span-mm`, `--points` and `--seconds` control the
+acquisition. Existing recordings are never overwritten. Use `--start-repeat N`
+to resume at a particular recording number. An optional `acquisition-notes.json`
+in the output directory is included in the summary, for example to document a
+recording repeated after movement near the antennas.
+
+## Doppler across the OFDM bandwidth
+
+Select overclocked mode in the web interface and run:
+
+```sh
+python3 scripts/ofdm_doppler.py capture --execute
+python3 scripts/ofdm_doppler.py analyze
+```
+
+This records ten 20-second OFDM captures per condition, alternating continuous
+motion with Doppler at fixed delay. The target starts at 6.25 µs added delay with
+approximately +40 Hz carrier Doppler. The waveform occupies 55 MHz around
+2385 MHz, with 56 MHz simulator bandwidth. Both radios are muted after each
+recording. The setup environment variables above apply, and omitting `--execute`
+prints commands without acquiring data. `--output`, `--repeats`, `--seconds` and
+`--start-repeat` control the recordings.
+
+Each occupied subcarrier's Doppler is estimated independently by fitting a
+complex sinusoid over time. This avoids phase-unwrapping errors during fades. A common +40 Hz demodulation and a 5 Hz low-pass filter isolate
+the target from stationary echoes. The theoretical frequency-dependent Doppler
+is not used in this estimation. One common offset is subtracted from each
+recording, leaving its measured slope across subcarrier frequencies unchanged.
+The figure shows medians and empirical 10th–90th percentiles across recordings,
+with an enlarged error panel below.
+
+Raw recordings, individual estimates and the numerical figure summary are saved
+in `build/ofdm-doppler/`. To redraw the figure from the summary alone:
+
+```sh
+python3 figures/plot_ofdm_doppler.py build/ofdm-doppler/ofdm-doppler.json \
+    --output build/ofdm-doppler/ofdm-doppler.pdf
+```
+
 ## Offline checks
 
 Run `make test` for synthetic capture and analysis tests. They require no hardware
