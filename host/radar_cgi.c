@@ -2,6 +2,7 @@
 /* HTTP controls for the Pluto web UI. */
 #include "radar_control.h"
 #include "radar_linux.h"
+#include "radar_latency.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -338,10 +339,10 @@ static void state_response(radar_device *device) {
     json_number("tx_gain_min_db", tx_limits_ok ? tx_limits.minimum : NAN);
     json_number("tx_gain_step_db", tx_limits_ok ? tx_limits.step : NAN);
     json_number("tx_gain_max_db", tx_limits_ok ? tx_limits.maximum : NAN);
-    if (version == 0x00020003 && standard) {
-        latency = rx_bandwidth == 20000000 && tx_bandwidth == 20000000 ? 1.35 :
-                  rx_bandwidth == 56000000 && tx_bandwidth == 56000000 ? 1.31875 : NAN;
-    }
+    if ((version == 0x00020003 && standard) ||
+        (version == 0x00020002 && rate == 160000000))
+        latency = rx_bandwidth == tx_bandwidth ?
+                  radar_bandwidth_latency(version, rate, rx_bandwidth) : NAN;
     json_number("hardware_latency_us", latency);
     fputs(",\"targets\":[", stdout);
     unsigned emitted = 0;

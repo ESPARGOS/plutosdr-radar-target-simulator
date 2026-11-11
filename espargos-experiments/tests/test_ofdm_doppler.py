@@ -6,10 +6,24 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from ofdm_doppler import estimate
+from ofdm_doppler import estimate, summarize
 
 
 class DopplerTest(unittest.TestCase):
+    def test_summary_preserves_common_error(self):
+        frequencies = np.array([-1e6, 0, 1e6])
+        expected = 40 + frequencies * .02 / 1e6
+        offsets = np.array([.001, .002, .003, .004, .005])
+        records = [dict(frequencies_hz=frequencies.tolist(), carrier_hz=2385e6,
+                        carrier_doppler_hz=40, expected_slope_hz_per_mhz=.02,
+                        measured_slope_hz_per_mhz=.02, common_offset_hz=offset,
+                        measured_hz=(expected + offset).tolist()) for offset in offsets]
+        summary = summarize(records)
+        np.testing.assert_allclose(np.array(summary['median_hz']) - expected, .003)
+        np.testing.assert_allclose(np.array(summary['p10_hz']) - expected, .0014)
+        np.testing.assert_allclose(np.array(summary['p90_hz']) - expected, .0046)
+        self.assertAlmostEqual(summary['maximum_absolute_median_error_hz'], .003)
+
     def test_frequency_dependence_and_fixed_delay(self):
         rng = np.random.default_rng(308)
         t = np.arange(0, 14, 1/150)

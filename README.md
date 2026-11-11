@@ -121,9 +121,9 @@ overclocked setting fails or times out, it tries standard mode instead. The web
 interface reports the fallback and adjusts the shaded region automatically.
 If neither setting passes, transmission stays muted.
 
-The displayed minimum distances are reference values, not individual calibration
-of your Pluto. For bandwidth settings without a delay reference, the interface
-shows added range instead. See [operating limits](docs/limitations.md) for details
+The minimum distance follows the selected bandwidth, using measured reference
+delays interpolated between bandwidth settings. These are estimates, not
+individual calibration of your Pluto. See [operating limits](docs/limitations.md) for details
 about range, antenna coupling and moving targets.
 
 ## Related work

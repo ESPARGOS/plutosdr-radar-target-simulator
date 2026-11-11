@@ -15,8 +15,8 @@ def main():
         window = data["velocity_range_window_m"]
         included = (distance >= window[0]) & (distance <= window[1])
         reference = data["range_power"][:, included].max()
-        fig, axes = plt.subplots(2, 1, figsize=(3.5, 3.8), sharex=True)
-        fig.subplots_adjust(left=.17, right=.78, bottom=.11, top=.92, hspace=.12)
+        fig, axes = plt.subplots(2, 1, figsize=(3.5, 3.22), sharex=True)
+        fig.subplots_adjust(left=.17, right=.78, bottom=.13, top=.906, hspace=.15)
         for index, (axis, coordinate, key, label) in enumerate(zip(
             axes, [distance, velocity], ["range_power", "velocity_power"],
             ["Equivalent range (m)", "Radial velocity (m/s)"]
@@ -52,7 +52,7 @@ def main():
         axes[1].set(xlim=(0, 250), ylim=(-2.65, 2.65), xlabel="Time (s)")
         axes[1].set_yticks([-2, -1, 0, 1, 2])
         axes[1].set_xticks([0, 60, 120, 180, 240])
-        colorbar = fig.colorbar(image, cax=fig.add_axes([.81, .11, .025, .81]))
+        colorbar = fig.colorbar(image, cax=fig.add_axes([.81, .13, .025, .776]))
         colorbar.set_label("Relative power (dB)", fontsize=7)
         colorbar.set_ticks([-30, -20, -10, 0])
         fig.savefig(ROOT / "figures/trajectory.pdf", dpi=300)

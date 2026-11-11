@@ -145,10 +145,11 @@ side of the carrier and is quantized by the calibration divider. See the
 [ADI reference manual, pages 10 and 32](https://www.analog.com/media/en/technical-documentation/user-guides/ad9361.pdf)
 and [driver calibration code](https://github.com/analogdevicesinc/linux/blob/2019_R2/drivers/iio/adc/ad9361.c).
 
-Read `hardware_latency_us` after changing bandwidth. Reference delays are available
-for 20 MHz and 56 MHz in both modes. Other combinations
-return null. The UI then labels the plot as range offset and the sidebar as added
-delay, instead of claiming an uncalibrated total range. Filter settings do not
+Read `hardware_latency_us` after changing bandwidth. The current FPGA profiles have
+measured reference delays covering 0.2–56 MHz in both modes. Values between
+reference points are interpolated in inverse bandwidth by `host/radar_latency.h`.
+Unsupported profiles or unequal RX/TX bandwidths return null, so the UI displays
+added delay rather than an estimated total range. Filter settings do not
 guarantee a flat end-to-end passband.
 
 The Python preview uses the same scene payload under `/api/`; only the endpoint

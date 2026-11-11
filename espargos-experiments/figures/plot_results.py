@@ -108,8 +108,8 @@ def range_doppler(ax):
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(3.5, 3.35))
-    fig.subplots_adjust(left=.16,right=.85,bottom=.14,top=.92)
+    fig, ax = plt.subplots(figsize=(3.5, 2.83))
+    fig.subplots_adjust(left=.16,right=.85,bottom=.166,top=.905)
     range_doppler(ax)
     fig.savefig(ROOT / 'figures/results.pdf', dpi=300)
     fig.savefig(ROOT / 'build/results.png', dpi=180)

@@ -112,7 +112,7 @@ The web status shows the current stage and elapsed startup time. The FPGA is
 already loaded when the radio checks run.
 If the 160 MSa/s check fails, startup restores and validates the normal 61.44 MSa/s
 profile before enabling the controls. The UI identifies fallback mode
-and uses its 1.35 µs reference latency (202.4 m minimum range). If either
+and updates the minimum range for the active bandwidth. If either
 recovery or standard-profile validation fails, targets stay muted and the API
 returns an error. The radio-panel mode selector saves the requested mode in
 `/mnt/jffs2/radar-mode`. Selecting Standard skips the 160 MSa/s attempt. A mode

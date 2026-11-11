@@ -26,6 +26,7 @@ def sources():
             "host/radar_control.h",
             "host/radar_linux.h",
             "host/radio_timing.h",
+            "host/radar_latency.h",
             "scripts/build_tools.py",
             "scripts/container.sh",
         ]

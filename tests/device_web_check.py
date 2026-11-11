@@ -142,13 +142,14 @@ try:
         wide_latency = 1.31875 if expected_rate == 61440000 else .4140625
         assert js("app.controller.state.hardware_latency_us") == wide_latency
         assert js("app.controller.targets.every(t=>!t.enabled)")
-        js("(()=>{const field=document.getElementById('bandwidth-input');field.value='30';field.dispatchEvent(new Event('change'));})()")
+        js("(()=>{const field=document.getElementById('bandwidth-input');field.value='22.5';field.dispatchEvent(new Event('change'));})()")
         time.sleep(0.5)
         custom = request("state")[1]
-        assert custom["rx_bandwidth_hz"] == custom["tx_bandwidth_hz"] == 30000000
-        assert custom["hardware_latency_us"] is None and custom["muted"]
-        assert js("document.getElementById('range-axis-title').textContent") == "Range offset (m)"
-        assert js("document.getElementById('connection').textContent.includes('hardware delay is unknown')")
+        assert custom["rx_bandwidth_hz"] == custom["tx_bandwidth_hz"] == 22500000
+        assert .3 < custom["hardware_latency_us"] < 2 and custom["muted"]
+        assert js("document.getElementById('range-axis-title').textContent") == "Total range (m)"
+        assert js("!document.getElementById('connection').textContent.includes('hardware delay is unknown')")
+        assert js("document.getElementById('delay-caption').textContent") == "Total delay"
         js("app.controller.bandwidth(20000000)")
         assert request("state")[1]["tx_bandwidth_hz"] == 20000000
         assert js("app.controller.state.hardware_latency_us") == expected_latency

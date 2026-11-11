@@ -31,6 +31,8 @@ test-web:
 .PHONY: test-native test-ui-model test-provenance
 test-native:
 	mkdir -p build/tests
+	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost tests/test_latency.c -lm -o build/tests/latency
+	build/tests/latency
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost tests/test_radio_timing.c -o build/tests/radio-timing
 	build/tests/radio-timing
 	$(CC) -std=c11 -O2 -Wall -Wextra -Werror -Ihost -Itests host/radar_control.c tests/fake_device.c tests/test_native_control.c -lm -o build/tests/native-control

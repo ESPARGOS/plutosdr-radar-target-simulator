@@ -136,6 +136,32 @@ def capture(args):
                 subprocess.run(command, check=True, cwd=ROOT)
 
 
+def summarize(records):
+    """Summarize absolute Doppler estimates without removing frequency offsets."""
+    if len(records) < 5:
+        raise ValueError("At least five recordings per condition are needed for percentiles")
+    frequencies = np.array(records[0]["frequencies_hz"])
+    if any(r["frequencies_hz"] != frequencies.tolist() for r in records):
+        raise ValueError("Subcarrier frequencies differ between recordings")
+    if any(r["carrier_hz"] != records[0]["carrier_hz"] or
+           r["carrier_doppler_hz"] != records[0]["carrier_doppler_hz"] for r in records):
+        raise ValueError("Carrier or target Doppler changed between recordings")
+    values = np.array([r["measured_hz"] for r in records])
+    prediction = (records[0]["carrier_doppler_hz"]
+                  + frequencies * records[0]["expected_slope_hz_per_mhz"] / 1e6)
+    return dict(repeats=len(records), carrier_hz=records[0]["carrier_hz"],
+        carrier_doppler_hz=records[0]["carrier_doppler_hz"],
+        frequencies_hz=frequencies.tolist(),
+        measured_hz=values.tolist(), expected_hz=prediction.tolist(),
+        median_hz=np.median(values, axis=0).tolist(),
+        p10_hz=np.percentile(values, 10, axis=0).tolist(),
+        p90_hz=np.percentile(values, 90, axis=0).tolist(),
+        slopes_hz_per_mhz=[r["measured_slope_hz_per_mhz"] for r in records],
+        expected_slope_hz_per_mhz=records[0]["expected_slope_hz_per_mhz"],
+        common_offsets_hz=[r["common_offset_hz"] for r in records],
+        maximum_absolute_median_error_hz=float(np.max(abs(np.median(values,axis=0)-prediction))))
+
+
 def process(args):
     result = dict(band_percentiles=[10, 90], modes={})
     for mode in ["moving", "fixed"]:
@@ -146,27 +172,7 @@ def process(args):
                 raise ValueError("Capture condition differs from its filename")
             path.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
             records.append(record)
-        if len(records) < 5:
-            raise ValueError("At least five recordings per condition are needed for percentiles")
-        frequencies = np.array(records[0]["frequencies_hz"])
-        if any(r["frequencies_hz"] != frequencies.tolist() for r in records):
-            raise ValueError("Subcarrier frequencies differ between recordings")
-        if any(r["carrier_hz"] != records[0]["carrier_hz"] or
-               r["carrier_doppler_hz"] != records[0]["carrier_doppler_hz"] for r in records):
-            raise ValueError("Carrier or target Doppler changed between recordings")
-        values = np.array([r["relative_hz"] for r in records])
-        prediction = frequencies * records[0]["expected_slope_hz_per_mhz"] / 1e6
-        result["modes"][mode] = dict(repeats=len(records), carrier_hz=records[0]["carrier_hz"],
-            carrier_doppler_hz=records[0]["carrier_doppler_hz"],
-            frequencies_hz=frequencies.tolist(),
-            relative_hz=values.tolist(), expected_hz=prediction.tolist(),
-            median_hz=np.median(values, axis=0).tolist(),
-            p10_hz=np.percentile(values, 10, axis=0).tolist(),
-            p90_hz=np.percentile(values, 90, axis=0).tolist(),
-            slopes_hz_per_mhz=[r["measured_slope_hz_per_mhz"] for r in records],
-            expected_slope_hz_per_mhz=records[0]["expected_slope_hz_per_mhz"],
-            common_offsets_hz=[r["common_offset_hz"] for r in records],
-            maximum_absolute_median_error_hz=float(np.max(abs(np.median(values,axis=0)-prediction))))
+        result["modes"][mode] = summarize(records)
     (args.output / "ofdm-doppler.json").write_text(json.dumps(result, indent=2) + "\n")
     sys.path.insert(0, str(ROOT / "figures"))
     from plot_ofdm_doppler import plot

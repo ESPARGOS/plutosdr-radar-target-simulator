@@ -133,8 +133,8 @@ prints commands without acquiring data. `--output`, `--repeats`, `--seconds` and
 Each occupied subcarrier's Doppler is estimated independently by fitting a
 complex sinusoid over time. This avoids phase-unwrapping errors during fades. A common +40 Hz demodulation and a 5 Hz low-pass filter isolate
 the target from stationary echoes. The theoretical frequency-dependent Doppler
-is not used in this estimation. One common offset is subtracted from each
-recording, leaving its measured slope across subcarrier frequencies unchanged.
+is not used in this estimation. Absolute Doppler estimates are compared directly
+with theory, without subtracting a common frequency offset.
 The figure shows medians and empirical 10th–90th percentiles across recordings,
 with an enlarged error panel below.
 
@@ -151,3 +151,23 @@ python3 figures/plot_ofdm_doppler.py build/ofdm-doppler/ofdm-doppler.json \
 Run `make test` for synthetic capture and analysis tests. They require no hardware
 and are independent of the simulator's normal test suite. Individual tools accept
 `--help`. All code in this folder uses the project's [GPLv3 license](../LICENSE).
+
+### Minimum range versus bandwidth
+
+The firmware uses reference receive-to-transmit delays for each operating mode.
+To measure these references with a single zero-added-delay target:
+
+```sh
+python3 scripts/bandwidth_latency.py capture --output build/bandwidth-latency
+python3 scripts/bandwidth_latency.py analyze --output build/bandwidth-latency
+```
+
+Use the setup environment variables above. The capture sweeps both modes from
+0.2 to 56 MHz at a 2385 MHz carrier. `--modes` and `--bandwidths` select a subset.
+The target's Doppler separates its echo from stationary clutter. Delay is fitted
+relative to a muted-simulator recording, with receiver powers combined rather
+than phases. Longer OFDM waveforms resolve the narrowest passbands. Captures and
+per-receiver delay estimates are saved for inspection. The radio settings are
+restored afterwards and the simulator is left muted. Antenna propagation and
+multipath affect these reference measurements, so they are not a calibration of
+another device or installation.

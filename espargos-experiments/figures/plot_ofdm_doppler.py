@@ -15,11 +15,12 @@ def plot(result, output):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
     plt.rcParams.update({'font.family': 'DejaVu Sans', 'font.size': 8,
                          'axes.labelsize': 8, 'xtick.labelsize': 7, 'ytick.labelsize': 7,
                          'legend.fontsize': 7, 'pdf.fonttype': 42, 'axes.linewidth': .6})
-    fig, axes = plt.subplots(2, 1, figsize=(3.45, 2.65), sharex=True,
-                             gridspec_kw={'height_ratios': [.85, 1]}, layout='constrained')
+    fig, axes = plt.subplots(2, 1, figsize=(3.45, 2.47), sharex=True,
+                             gridspec_kw={'height_ratios': [.85, .8]}, layout='constrained')
     for mode, color, label in [('moving', '#258c4c', 'Continuous motion'),
                                 ('fixed', '#2787b2', 'Fixed-delay Doppler')]:
         d = result['modes'][mode]
@@ -35,14 +36,25 @@ def plot(result, output):
             axes[1].fill_between(f[mask], 1000*(low[mask]-expected[mask]),
                                  1000*(high[mask]-expected[mask]), color=color, alpha=.2)
             axes[1].plot(f[mask], 1000*(median[mask]-expected[mask]), color=color, lw=.8)
-        axes[0].plot(f, expected, '--', color='0.25', lw=.8,
-                     label='Theory' if mode == 'moving' else None)
-    axes[0].set_ylabel('Relative Doppler\n(Hz)')
+        axes[0].plot(f, expected, '--', color=('#123e23' if mode == 'moving' else '#123c51'), lw=.8,
+                     label=None)
+    axes[0].set_ylabel('Doppler (Hz)')
+    axes[0].set_yticks([39.6, 40.0, 40.4])
+    axes[0].ticklabel_format(axis='y', style='plain', useOffset=False)
     axes[0].set_title('(a) Doppler across the signal band', loc='left', fontsize=8)
-    axes[0].legend(frameon=False, loc='upper left', handlelength=1.6,
-                   fontsize=6.5, labelspacing=.1, borderaxespad=.3)
+    for color, title, location in [('#258c4c', 'Continuous motion', 'upper left'),
+                                    ('#2787b2', 'Fixed-delay Doppler', 'lower right')]:
+        handles = [Line2D([], [], color=('#123e23' if title == 'Continuous motion' else '#123c51'),
+                           ls='--', lw=.8, label='Theory'),
+                   Line2D([], [], color=color, lw=1, label='Measurement')]
+        legend = axes[0].legend(handles=handles, title=title, frameon=False,
+                                loc=location, ncol=2, handlelength=1.5,
+                                fontsize=6.5, title_fontsize=6.5, labelspacing=.15,
+                                columnspacing=.7, handletextpad=.4, borderaxespad=.3)
+        if location == 'upper left':
+            axes[0].add_artist(legend)
     axes[1].axhline(0, color='0.3', ls='--', lw=.8)
-    axes[1].set_ylabel('Error (mHz)')
+    axes[1].set_ylabel('Error relative to\ntheory (mHz)')
     axes[1].set_title('(b) Difference from theory', loc='left', fontsize=8)
     axes[1].set_xlabel('Baseband frequency offset (MHz)')
     for ax in axes:

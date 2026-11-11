@@ -114,6 +114,14 @@ assert response[1]["rx_bandwidth_hz"] == response[1]["tx_bandwidth_hz"] == 56000
 assert request("bandwidth", b"20000000", **wide_standard)[1]["hardware_latency_us"] == 1.35
 assert request("bandwidth", b"56000001", **wide_standard)[0] == 400
 
+# Intermediate and narrow bandwidths must keep total range available.
+for profile in [wide_standard, dict(RADAR_TEST_WIDEBAND="1", RADAR_TEST_EIGHT_TAPS="1")]:
+    for bandwidth in [200000, 350000, 1000000, 7250000, 10000000, 22500000, 45000000]:
+        code, state, _ = request("bandwidth", str(bandwidth).encode(), **profile)
+        assert code == 200 and state["muted"]
+        assert .3 < state["hardware_latency_us"] < 5
+
+
 fast_bandwidth = request("bandwidth", b"56000000", RADAR_TEST_WIDEBAND="1",
                          RADAR_TEST_EIGHT_TAPS="1")
 assert fast_bandwidth[0] == 200 and fast_bandwidth[1]["hardware_latency_us"] == .4140625
