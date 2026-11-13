@@ -8,6 +8,11 @@ This firmware turns a low-cost PlutoSDR into a radar target simulator. The Pluto
 creates up to four echoes with different delays and Doppler shifts via real-time FPGA processing,
 and transmits them back.
 
+The accompanying paper,
+[“A Four-Branch Radar Target Simulator with Fractional Delay on a PlutoSDR”](https://arxiv.org/abs/2611.15674)
+by Florian Euchner and Stephan ten Brink, describes the design and measurements.
+See [Citation](#citation) for BibTeX.
+
 ![Radar, PlutoSDR and the two computer roles](docs/assets/test-setup.svg)
 
 A web interface hosted on the Pluto lets you place targets and adjust their strength:
@@ -243,10 +248,28 @@ from Git.
 | `docs/` | User and developer guides, diagrams |
 | `espargos-experiments/` | Optional ESPARGOS acquisition, analysis and paper figures |
 
-## AI use
+## Citation
 
-All source code written for this project was AI-generated. Third-party code
-keeps its original authorship and licenses.
+If you use this simulator in your research, please cite the accompanying
+[arXiv paper](https://arxiv.org/abs/2611.15674):
+
+```bibtex
+@misc{euchner2026fourbranch,
+  title         = {A Four-Branch Radar Target Simulator with Fractional Delay on a {PlutoSDR}},
+  author        = {Florian Euchner and Stephan ten Brink},
+  year          = {2026},
+  eprint        = {2611.15674},
+  archivePrefix = {arXiv},
+  primaryClass  = {eess.SP},
+  doi           = {10.48550/arXiv.2611.15674},
+  url           = {https://arxiv.org/abs/2611.15674}
+}
+```
+
+## Acknowledgements / AI Use
+
+The software and FPGA development for this project was significantly assisted by OpenAI Codex.
+Third-party code keeps its original authorship and licenses.
 
 ## License
 
